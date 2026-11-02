@@ -5,12 +5,19 @@ from django.utils import timezone
 
 class StudentProfile(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='student_profile')
+    first_name = models.CharField(max_length=100, blank=True, default='')
+    surname = models.CharField(max_length=100, blank=True, default='')
     full_name = models.CharField(max_length=200)
+    gender = models.CharField(max_length=20, blank=True, default='')
+    address = models.TextField(blank=True, default='')
+    semester = models.CharField(max_length=20, blank=True, default='')
+    degree = models.CharField(max_length=100, blank=True, default='')
     mobile_number = models.CharField(max_length=20)
     email = models.EmailField(unique=True)
     college_name = models.CharField(max_length=255)
     university = models.CharField(max_length=255)
     technology = models.CharField(max_length=100) # e.g. Python, React, Full Stack, Flutter
+    profile_photo = models.ImageField(upload_to='student_photos/', null=True, blank=True)
     
     # Verification & Approval Status
     is_approved = models.BooleanField(default=False)
@@ -68,7 +75,7 @@ class StudentProfile(models.Model):
     certificate_signatory_two_name = models.CharField(max_length=100, default='Director of Technical Training')
     certificate_signatory_two_role = models.CharField(max_length=100, default='Akash Technolabs')
     
-    internship_start_date = models.DateField(default=timezone.now)
+    internship_start_date = models.DateField(default=timezone.localdate)
     internship_duration_months = models.IntegerField(default=6)
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -78,7 +85,7 @@ class StudentProfile(models.Model):
 
 class Attendance(models.Model):
     student = models.ForeignKey(StudentProfile, on_delete=models.CASCADE, related_name='attendances')
-    date = models.DateField(default=timezone.now)
+    date = models.DateField(default=timezone.localdate)
     clock_in = models.DateTimeField(null=True, blank=True)
     clock_out = models.DateTimeField(null=True, blank=True)
     is_clocked_in = models.BooleanField(default=False)
@@ -105,7 +112,7 @@ class BreakLog(models.Model):
 
 class DailyWorkReport(models.Model):
     student = models.ForeignKey(StudentProfile, on_delete=models.CASCADE, related_name='reports')
-    date = models.DateField(default=timezone.now)
+    date = models.DateField(default=timezone.localdate)
     tasks = models.JSONField(default=list)  # List of items: [{'time_slot': '02:00 PM - 03:00 PM', 'task': '...'}]
     summary = models.TextField(blank=True, default="")
     submitted_at = models.DateTimeField(auto_now_add=True)

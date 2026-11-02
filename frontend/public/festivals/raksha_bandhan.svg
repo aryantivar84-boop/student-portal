@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="100%" height="100%">
+  <defs>
+    <radialGradient id="bg_rak" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#FFF8E1"/>
+      <stop offset="60%" stop-color="#FFECB3"/>
+      <stop offset="100%" stop-color="#FFE082"/>
+    </radialGradient>
+    <radialGradient id="rakhi_center" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#FFD54F"/>
+      <stop offset="60%" stop-color="#FF6F00"/>
+      <stop offset="100%" stop-color="#D50000"/>
+    </radialGradient>
+  </defs>
+  <!-- Background -->
+  <circle cx="60" cy="60" r="54" fill="url(#bg_rak)" stroke="#E65100" stroke-width="2.5"/>
+
+  <!-- Rakhi Red/Yellow Silk Thread extending outwards -->
+  <path d="M 16 56 Q 38 62 60 56 Q 82 50 104 56" fill="none" stroke="#D50000" stroke-width="3" stroke-linecap="round"/>
+  <path d="M 16 58 Q 38 64 60 58 Q 82 52 104 58" fill="none" stroke="#FFD54F" stroke-width="2" stroke-linecap="round"/>
+
+  <!-- Pearls / Beads on Thread -->
+  <circle cx="34" cy="59" r="3.5" fill="#FFFDE7" stroke="#FFA000" stroke-width="1"/>
+  <circle cx="42" cy="58" r="3.5" fill="#D50000"/>
+  <circle cx="78" cy="55" r="3.5" fill="#D50000"/>
+  <circle cx="86" cy="54" r="3.5" fill="#FFFDE7" stroke="#FFA000" stroke-width="1"/>
+
+  <!-- Ornate Rakhi Centerpiece (Floral Chakra) -->
+  <g transform="translate(60, 56)">
+    <!-- Outer Petals -->
+    <circle cx="0" cy="0" r="22" fill="#D50000" stroke="#FFD54F" stroke-width="1.5"/>
+    <circle cx="0" cy="0" r="18" fill="none" stroke="#FFFFFF" stroke-width="1.5" stroke-dasharray="2,3"/>
+    <!-- Golden Core -->
+    <circle cx="0" cy="0" r="14" fill="url(#rakhi_center)" stroke="#FFD700" stroke-width="2"/>
+    <!-- Center Jewel (Kundan / Gem) -->
+    <polygon points="0,-8 6,-3 6,5 0,9 -6,5 -6,-3" fill="#00E5FF" stroke="#FFFFFF" stroke-width="1"/>
+    <circle cx="0" cy="0" r="3" fill="#FFFFFF"/>
+  </g>
+
+  <!-- Bottom Pill -->
+  <rect x="18" y="90" width="84" height="18" rx="9" fill="#C2185B"/>
+  <text x="60" y="103" text-anchor="middle" font-family="Arial, sans-serif" font-weight="900" font-size="7.5" fill="#FFFFFF" letter-spacing="0.5">RAKSHA BANDHAN</text>
+</svg>

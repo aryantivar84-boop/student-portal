@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="100%" height="100%">
+  <defs>
+    <radialGradient id="bg_holi" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#FFFFFF"/>
+      <stop offset="70%" stop-color="#FFF8E1"/>
+      <stop offset="100%" stop-color="#FFE0B2"/>
+    </radialGradient>
+  </defs>
+  <!-- Background -->
+  <circle cx="60" cy="60" r="54" fill="url(#bg_holi)" stroke="#FF4081" stroke-width="2.5"/>
+
+  <!-- Splashes of Color (Gulal) -->
+  <path d="M 24 35 C 28 20 45 25 50 35 C 55 42 42 50 35 48 C 25 45 20 42 24 35 Z" fill="#E91E63" opacity="0.85"/>
+  <path d="M 72 25 C 85 20 95 35 90 45 C 85 52 75 48 72 40 Z" fill="#00BCD4" opacity="0.85"/>
+  <path d="M 75 60 C 90 62 98 75 88 82 C 78 88 70 78 75 60 Z" fill="#FFEB3B" opacity="0.85"/>
+  <path d="M 26 65 C 18 72 25 85 36 82 C 45 80 40 70 30 68 Z" fill="#7C4DFF" opacity="0.85"/>
+
+  <!-- Pichkari (Water Gun) -->
+  <g transform="translate(60, 52) rotate(-35)">
+    <!-- Barrel -->
+    <rect x="-6" y="-22" width="12" height="44" rx="4" fill="#FF9800" stroke="#E65100" stroke-width="1.5"/>
+    <!-- Rings -->
+    <rect x="-7" y="-12" width="14" height="4" fill="#FFEB3B"/>
+    <rect x="-7" y="2" width="14" height="4" fill="#00E676"/>
+    <!-- Nozzle -->
+    <polygon points="0,-32 -4,-22 4,-22" fill="#D50000"/>
+    <!-- Plunger rod & handle -->
+    <rect x="-2" y="22" width="4" height="12" fill="#78909C"/>
+    <ellipse cx="0" cy="34" rx="7" ry="3" fill="#37474F"/>
+    <!-- Jet spray -->
+    <circle cx="0" cy="-36" r="3" fill="#00E5FF"/>
+    <circle cx="-5" cy="-42" r="2.5" fill="#E040FB"/>
+    <circle cx="5" cy="-44" r="2.5" fill="#FFEA00"/>
+  </g>
+
+  <!-- Bottom Pill -->
+  <rect x="22" y="90" width="76" height="18" rx="9" fill="#E91E63"/>
+  <text x="60" y="103" text-anchor="middle" font-family="Arial, sans-serif" font-weight="900" font-size="8.5" fill="#FFFFFF" letter-spacing="0.5">HAPPY HOLI</text>
+</svg>

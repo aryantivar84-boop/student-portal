@@ -10,21 +10,38 @@ from .models import (
 
 
 class StudentRegisterSerializer(serializers.Serializer):
-    username = serializers.CharField(max_length=150)
-    password = serializers.CharField(write_only=True, min_length=6)
-    full_name = serializers.CharField(max_length=200)
+    username = serializers.CharField(max_length=150, required=False, allow_blank=True, default='')
+    password = serializers.CharField(write_only=True, required=False, allow_blank=True, default='')
+    first_name = serializers.CharField(max_length=100, required=False, allow_blank=True)
+    surname = serializers.CharField(max_length=100, required=False, allow_blank=True)
+    full_name = serializers.CharField(max_length=200, required=False, allow_blank=True)
+    gender = serializers.CharField(max_length=20, required=False, allow_blank=True)
+    address = serializers.CharField(required=False, allow_blank=True)
+    semester = serializers.CharField(max_length=20, required=False, allow_blank=True)
+    degree = serializers.CharField(max_length=100, required=False, allow_blank=True)
     mobile_number = serializers.CharField(max_length=20)
     email = serializers.EmailField()
     college_name = serializers.CharField(max_length=255)
     university = serializers.CharField(max_length=255)
     technology = serializers.CharField(max_length=100)
+    profile_photo = serializers.ImageField(required=False, allow_null=True)
+
+    def validate_first_name(self, value):
+        val = value.strip()
+        if val and not re.match(r'^[a-zA-Z\s.\'-]+$', val):
+            raise serializers.ValidationError("First Name must contain letters only (no numbers allowed).")
+        return val
+
+    def validate_surname(self, value):
+        val = value.strip()
+        if val and not re.match(r'^[a-zA-Z\s.\'-]+$', val):
+            raise serializers.ValidationError("Surname must contain letters only (no numbers allowed).")
+        return val
 
     def validate_full_name(self, value):
         val = value.strip()
-        if not re.match(r'^[a-zA-Z\s.\'-]+$', val):
+        if val and not re.match(r'^[a-zA-Z\s.\'-]+$', val):
             raise serializers.ValidationError("Full Name must contain letters only (no numbers allowed).")
-        if len(val) < 2:
-            raise serializers.ValidationError("Full Name must be at least 2 characters.")
         return val
 
     def validate_mobile_number(self, value):
@@ -58,12 +75,15 @@ class StudentRegisterSerializer(serializers.Serializer):
         return val
 
     def validate_username(self, value):
-        orphaned = User.objects.filter(username=value, is_staff=False, student_profile__isnull=True)
+        val = (value or '').strip()
+        if not val:
+            return ''
+        orphaned = User.objects.filter(username=val, is_staff=False, student_profile__isnull=True)
         if orphaned.exists():
             orphaned.delete()
-        elif User.objects.filter(username=value).exists():
+        elif User.objects.filter(username=val).exists():
             raise serializers.ValidationError("Username already exists.")
-        return value
+        return val
 
     def validate_email(self, value):
         orphaned = User.objects.filter(email=value, is_staff=False, student_profile__isnull=True)
@@ -73,22 +93,70 @@ class StudentRegisterSerializer(serializers.Serializer):
             raise serializers.ValidationError("Email already registered.")
         return value
 
+    def validate(self, attrs):
+        first = attrs.get('first_name', '').strip()
+        sur = attrs.get('surname', '').strip()
+        full = attrs.get('full_name', '').strip()
+
+        if first or sur:
+            attrs['full_name'] = f"{first} {sur}".strip()
+        elif full:
+            attrs['full_name'] = full
+            parts = full.split(' ', 1)
+            attrs['first_name'] = parts[0]
+            attrs['surname'] = parts[1] if len(parts) > 1 else ''
+        else:
+            raise serializers.ValidationError({"first_name": "First Name is required."})
+
+        # Auto-generate username if not provided
+        uname = (attrs.get('username') or '').strip()
+        if not uname:
+            email = attrs.get('email', '').strip().lower()
+            base_user = email.split('@')[0] if email else f"{first.lower()}{sur.lower()}"
+            base_user = re.sub(r'[^a-zA-Z0-9_]', '', base_user) or 'student'
+            candidate_username = base_user
+            counter = 1
+            while User.objects.filter(username=candidate_username).exists():
+                candidate_username = f"{base_user}{counter}"
+                counter += 1
+            attrs['username'] = candidate_username
+
+        # Auto-generate password if not provided (default to student's 10-digit mobile number)
+        pwd = (attrs.get('password') or '').strip()
+        if not pwd:
+            mobile = attrs.get('mobile_number', '').strip()
+            attrs['password'] = mobile if len(mobile) >= 6 else 'Student@123'
+
+        return attrs
+
     @transaction.atomic
     def create(self, validated_data):
+        first_name = validated_data.get('first_name', '').strip()
+        surname = validated_data.get('surname', '').strip()
+        full_name = validated_data.get('full_name', '').strip() or f"{first_name} {surname}".strip()
+
         user = User.objects.create_user(
             username=validated_data['username'],
             email=validated_data['email'],
             password=validated_data['password'],
-            first_name=validated_data['full_name']
+            first_name=first_name or full_name,
+            last_name=surname
         )
         profile = StudentProfile.objects.create(
             user=user,
-            full_name=validated_data['full_name'],
+            first_name=first_name,
+            surname=surname,
+            full_name=full_name,
+            gender=validated_data.get('gender', '').strip(),
+            address=validated_data.get('address', '').strip(),
+            semester=validated_data.get('semester', '').strip(),
+            degree=validated_data.get('degree', '').strip(),
             mobile_number=validated_data['mobile_number'],
             email=validated_data['email'],
             college_name=validated_data['college_name'],
             university=validated_data['university'],
             technology=validated_data['technology'],
+            profile_photo=validated_data.get('profile_photo'),
             is_approved=False # Requires Admin verification
         )
         return profile
@@ -96,28 +164,57 @@ class StudentRegisterSerializer(serializers.Serializer):
 
 class StudentProfileSerializer(serializers.ModelSerializer):
     username = serializers.CharField(source='user.username', read_only=True)
+    profile_photo_url = serializers.SerializerMethodField()
     offer_letter_header_image_url = serializers.SerializerMethodField()
     offer_letter_footer_image_url = serializers.SerializerMethodField()
     offer_letter_bg_image_url = serializers.SerializerMethodField()
     offer_letter_stamp_image_url = serializers.SerializerMethodField()
 
+    def get_profile_photo_url(self, obj):
+        if not obj.profile_photo:
+            return None
+        request = self.context.get('request')
+        if request:
+            return request.build_absolute_uri(obj.profile_photo.url)
+        return f"http://localhost:8000{obj.profile_photo.url}"
+
     def get_offer_letter_header_image_url(self, obj):
-        return obj.offer_letter_header_image.url if obj.offer_letter_header_image else None
+        if not obj.offer_letter_header_image:
+            return None
+        request = self.context.get('request')
+        if request:
+            return request.build_absolute_uri(obj.offer_letter_header_image.url)
+        return f"http://localhost:8000{obj.offer_letter_header_image.url}"
 
     def get_offer_letter_footer_image_url(self, obj):
-        return obj.offer_letter_footer_image.url if obj.offer_letter_footer_image else None
+        if not obj.offer_letter_footer_image:
+            return None
+        request = self.context.get('request')
+        if request:
+            return request.build_absolute_uri(obj.offer_letter_footer_image.url)
+        return f"http://localhost:8000{obj.offer_letter_footer_image.url}"
 
     def get_offer_letter_bg_image_url(self, obj):
-        return obj.offer_letter_bg_image.url if obj.offer_letter_bg_image else None
+        if not obj.offer_letter_bg_image:
+            return None
+        request = self.context.get('request')
+        if request:
+            return request.build_absolute_uri(obj.offer_letter_bg_image.url)
+        return f"http://localhost:8000{obj.offer_letter_bg_image.url}"
 
     def get_offer_letter_stamp_image_url(self, obj):
-        return obj.offer_letter_stamp_image.url if obj.offer_letter_stamp_image else None
+        if not obj.offer_letter_stamp_image:
+            return None
+        request = self.context.get('request')
+        if request:
+            return request.build_absolute_uri(obj.offer_letter_stamp_image.url)
+        return f"http://localhost:8000{obj.offer_letter_stamp_image.url}"
 
     class Meta:
         model = StudentProfile
         fields = [
-            'id', 'username', 'full_name', 'mobile_number', 'email',
-            'college_name', 'university', 'technology', 'is_approved',
+            'id', 'username', 'first_name', 'surname', 'full_name', 'gender', 'address', 'semester', 'degree',
+            'mobile_number', 'email', 'college_name', 'university', 'technology', 'profile_photo', 'profile_photo_url', 'is_approved',
             'approved_at', 'offer_letter_approved', 'certificate_approved',
             'offer_letter_issue_date', 'offer_letter_start_date', 'offer_letter_end_date',
             'offer_letter_role', 'offer_letter_custom_text', 'offer_letter_full_body',

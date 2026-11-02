@@ -5,8 +5,11 @@ import {
   BookOpen, Award, FileDown, AlertCircle, Plus, Trash2, Send,
   GraduationCap, Calendar, ShieldCheck, ArrowRight, UserCheck, Coffee,
   Eye, Download, User, RefreshCw, Mail, Phone, School, Sparkles, ExternalLink,
-  Bell, Megaphone, Check, XCircle, Building2, Filter, Edit, X, Code2
+  Bell, Megaphone, Check, XCircle, Building2, Filter, Edit, X, Code2, MapPin,
+  ChevronLeft, ChevronRight
 } from 'lucide-react';
+import { getFestivalDetails } from '../utils/festivals';
+
 
 export default function StudentPortal({ student, onRefreshProfile }) {
   const [activeTab, setActiveTab] = useState('overview'); // 'overview', 'profile', 'attendance', 'reports', 'notes', 'mcq', 'documents'
@@ -23,7 +26,11 @@ export default function StudentPortal({ student, onRefreshProfile }) {
     email: '',
     college_name: '',
     university: '',
-    technology: ''
+    technology: '',
+    gender: '',
+    degree: '',
+    semester: '',
+    address: ''
   });
   const [profileFieldErrors, setProfileFieldErrors] = useState({});
   const [savingProfile, setSavingProfile] = useState(false);
@@ -61,7 +68,11 @@ export default function StudentPortal({ student, onRefreshProfile }) {
       email: profile.email || '',
       college_name: profile.college_name || '',
       university: profile.university || '',
-      technology: profile.technology || ''
+      technology: profile.technology || '',
+      gender: profile.gender || '',
+      degree: profile.degree || '',
+      semester: profile.semester || '',
+      address: profile.address || ''
     });
     setProfileFieldErrors({});
     setShowEditProfileModal(true);
@@ -262,6 +273,22 @@ export default function StudentPortal({ student, onRefreshProfile }) {
     } finally {
       setLoadingStudentAtt(false);
     }
+  };
+
+  const handlePrevMonth = () => {
+    const [y, m] = studentAttMonth.split('-').map(Number);
+    const prevDate = new Date(y, m - 2, 1);
+    const newMonthStr = `${prevDate.getFullYear()}-${String(prevDate.getMonth() + 1).padStart(2, '0')}`;
+    setStudentAttMonth(newMonthStr);
+    loadStudentDailyAttendance(newMonthStr);
+  };
+
+  const handleNextMonth = () => {
+    const [y, m] = studentAttMonth.split('-').map(Number);
+    const nextDate = new Date(y, m, 1);
+    const newMonthStr = `${nextDate.getFullYear()}-${String(nextDate.getMonth() + 1).padStart(2, '0')}`;
+    setStudentAttMonth(newMonthStr);
+    loadStudentDailyAttendance(newMonthStr);
   };
 
   // Initialize and load today's attendance
@@ -522,25 +549,25 @@ export default function StudentPortal({ student, onRefreshProfile }) {
       label: 'News & Notices',
       icon: Bell,
       badge: unreadNewsCount > 0 ? `${unreadNewsCount} New` : null,
-      badgeColor: 'bg-rose-500 animate-pulse'
+      badgeColor: 'bg-rose-100 text-rose-700 border border-rose-200'
     },
     {
       id: 'profile',
       label: 'My Profile & Documents',
       icon: UserCheck,
       badge: (profile.offer_letter_approved || profile.certificate_approved) ? '✓ Granted' : null,
-      badgeColor: 'bg-emerald-600'
+      badgeColor: 'bg-emerald-100 text-emerald-800 border border-emerald-200'
     },
     { id: 'attendance', label: 'Clock-In & Time Tracker', icon: Clock },
-    { id: 'reports', label: 'Daily Work Reports', icon: FileText, badge: reportSubmittedToday ? '✓ Done' : 'Pending', badgeColor: reportSubmittedToday ? 'bg-emerald-600' : 'bg-amber-500' },
-    { id: 'notes', label: 'Allocated Study Notes', icon: BookOpen, badge: allocatedSubjects.length > 0 ? allocatedSubjects.length : null, badgeColor: 'bg-blue-600' },
+    { id: 'reports', label: 'Daily Work Reports', icon: FileText, badge: reportSubmittedToday ? '✓ Done' : 'Pending', badgeColor: reportSubmittedToday ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' : 'bg-amber-100 text-amber-800 border border-amber-200' },
+    { id: 'notes', label: 'Allocated Study Notes', icon: BookOpen, badge: allocatedSubjects.length > 0 ? allocatedSubjects.length : null, badgeColor: 'bg-blue-100 text-blue-800 border border-blue-200' },
     { id: 'mcq', label: 'MCQ Exam Module', icon: Award },
     {
       id: 'documents',
       label: 'Offer Letter & Certificate',
       icon: FileDown,
       badge: (profile.offer_letter_approved && profile.certificate_approved) ? '2 Ready' : (profile.offer_letter_approved || profile.certificate_approved) ? '1 Ready' : null,
-      badgeColor: 'bg-emerald-600'
+      badgeColor: 'bg-emerald-100 text-emerald-800 border border-emerald-200'
     },
   ];
 
@@ -550,44 +577,67 @@ export default function StudentPortal({ student, onRefreshProfile }) {
       {/* ======================================================== */}
       {/* MODERN LEFT SIDEBAR FOR STUDENT */}
       {/* ======================================================== */}
-      <aside className="w-full md:w-64 bg-slate-900 border-r border-slate-800 flex-shrink-0 flex flex-col justify-between">
+      <aside className="w-full md:w-64 bg-slate-50 border-r border-slate-200 flex-shrink-0 flex flex-col justify-between shadow-xs">
         <div className="p-4 space-y-6">
           
           {/* Student Profile Summary in Sidebar */}
           <div
             onClick={() => setActiveTab('profile')}
             title="Click to view My Profile & Documents"
-            className="p-3.5 rounded-2xl bg-slate-800/80 border border-slate-700/60 space-y-2 cursor-pointer hover:border-blue-500/70 hover:bg-slate-800 transition group"
+            className="p-3.5 rounded-2xl bg-white border border-slate-200 shadow-xs space-y-2 cursor-pointer hover:border-blue-300 hover:shadow-sm transition group"
           >
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-white font-bold text-base shadow group-hover:scale-105 transition-transform">
+              {profile.profile_photo_url || profile.profile_photo ? (
+                <img
+                  src={api.getMediaUrl(profile.profile_photo_url || profile.profile_photo)}
+                  alt={profile.full_name}
+                  onError={(e) => {
+                    e.currentTarget.style.display = 'none';
+                    const sibling = e.currentTarget.nextElementSibling;
+                    if (sibling) sibling.style.display = 'flex';
+                  }}
+                  className="w-10 h-10 rounded-xl object-cover shadow-xs border border-slate-200 flex-shrink-0"
+                />
+              ) : null}
+              <div
+                className="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 items-center justify-center text-white font-bold text-base shadow-sm shadow-blue-500/20 group-hover:scale-105 transition-transform"
+                style={{ display: profile.profile_photo_url || profile.profile_photo ? 'none' : 'flex' }}
+              >
                 {profile.full_name?.charAt(0) || 'S'}
               </div>
               <div className="overflow-hidden flex-1">
-                <div className="text-xs font-bold text-white truncate flex items-center justify-between">
+                <div className="text-xs font-bold text-slate-800 truncate flex items-center justify-between">
                   <span>{profile.full_name}</span>
-                  <ArrowRight className="w-3 h-3 text-slate-500 group-hover:text-blue-400 group-hover:translate-x-0.5 transition" />
+                  <ArrowRight className="w-3 h-3 text-slate-400 group-hover:text-blue-600 group-hover:translate-x-0.5 transition" />
                 </div>
-                <div className="text-[11px] text-blue-400 font-medium truncate">{profile.technology}</div>
+                <div className="text-[11px] text-blue-600 font-semibold truncate">{profile.technology}</div>
               </div>
             </div>
 
             {/* Attendance Status Indicator */}
-            <div className="pt-2 border-t border-slate-700/60 flex items-center justify-between text-[11px]">
-              <span className="text-slate-400">Status:</span>
-              <span
-                className={`font-semibold px-2 py-0.5 rounded-full ${
-                  timerRunning
-                    ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
-                    : isPaused
-                    ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
-                    : attendance?.clock_out
-                    ? 'bg-slate-700 text-slate-300'
-                    : 'bg-slate-700 text-slate-400'
-                }`}
-              >
-                {timerRunning ? '● Working' : isPaused ? '⏸️ On Break' : attendance?.clock_out ? '✓ Clocked Out' : '○ Not In'}
-              </span>
+            <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-[11px]">
+              <span className="text-slate-500 font-medium">Status:</span>
+              {timerRunning ? (
+                <span className="inline-flex items-center gap-1.5 font-bold px-2.5 py-0.5 rounded-full text-[11px] bg-emerald-50 text-emerald-700 border border-emerald-200 shadow-2xs">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                  Working
+                </span>
+              ) : isPaused ? (
+                <span className="inline-flex items-center gap-1.5 font-bold px-2.5 py-0.5 rounded-full text-[11px] bg-amber-50 text-amber-700 border border-amber-200 shadow-2xs">
+                  <span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
+                  On Break
+                </span>
+              ) : attendance?.clock_out ? (
+                <span className="inline-flex items-center gap-1.5 font-bold px-2.5 py-0.5 rounded-full text-[11px] bg-blue-50 text-blue-700 border border-blue-200 shadow-2xs">
+                  <CheckCircle2 className="w-3 h-3 text-blue-600" />
+                  Clocked Out
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1.5 font-bold px-2.5 py-0.5 rounded-full text-[11px] bg-slate-100 text-slate-600 border border-slate-200 shadow-2xs">
+                  <span className="w-1.5 h-1.5 rounded-full bg-slate-400"></span>
+                  Not Checked In
+                </span>
+              )}
             </div>
           </div>
 
@@ -605,16 +655,16 @@ export default function StudentPortal({ student, onRefreshProfile }) {
                   onClick={() => setActiveTab(item.id)}
                   className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold transition ${
                     isActive
-                      ? 'bg-blue-600 text-white shadow-md'
-                      : 'text-slate-300 hover:bg-slate-800 hover:text-white'
+                      ? 'bg-blue-600 text-white shadow-md shadow-blue-500/25'
+                      : 'text-slate-600 hover:bg-white hover:text-slate-900 hover:shadow-xs'
                   }`}
                 >
                   <div className="flex items-center gap-3">
-                    <Icon className={`w-4 h-4 ${isActive ? 'text-white' : 'text-slate-400'}`} />
+                    <Icon className={`w-4 h-4 ${isActive ? 'text-white' : 'text-slate-400 group-hover:text-slate-600'}`} />
                     <span>{item.label}</span>
                   </div>
                   {item.badge && (
-                    <span className={`${item.badgeColor || 'bg-blue-500'} text-white text-[10px] font-bold px-2 py-0.5 rounded-full`}>
+                    <span className={`${isActive ? 'bg-white/20 text-white' : item.badgeColor || 'bg-blue-100 text-blue-700'} text-[10px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap`}>
                       {item.badge}
                     </span>
                   )}
@@ -626,19 +676,19 @@ export default function StudentPortal({ student, onRefreshProfile }) {
         </div>
 
         {/* Sidebar Footer Details */}
-        <div className="p-4 border-t border-slate-800 text-xs text-slate-400 space-y-1.5">
-          <div className="text-[10px] uppercase font-bold text-slate-500 tracking-wider">Internship Info</div>
-          <div className="flex justify-between">
-            <span>Student ID:</span>
-            <span className="font-mono font-bold text-white">ATI-STU-{String(profile.id).padStart(4, '0')}</span>
+        <div className="p-4 border-t border-slate-200/90 bg-slate-100/70 text-xs text-slate-500 space-y-1.5">
+          <div className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Internship Info</div>
+          <div className="flex justify-between items-center">
+            <span className="font-medium">Student ID:</span>
+            <span className="font-mono font-bold text-slate-800">ATI-STU-{String(profile.id).padStart(4, '0')}</span>
           </div>
-          <div className="flex justify-between">
-            <span>Duration:</span>
-            <span className="font-semibold text-slate-200">{profile.internship_duration_months} Months</span>
+          <div className="flex justify-between items-center">
+            <span className="font-medium">Duration:</span>
+            <span className="font-semibold text-slate-700">{profile.internship_duration_months} Months</span>
           </div>
-          <div className="flex justify-between">
-            <span>Started:</span>
-            <span className="font-semibold text-slate-200">{profile.internship_start_date}</span>
+          <div className="flex justify-between items-center">
+            <span className="font-medium">Started:</span>
+            <span className="font-semibold text-slate-700">{profile.internship_start_date}</span>
           </div>
         </div>
       </aside>
@@ -663,20 +713,20 @@ export default function StudentPortal({ student, onRefreshProfile }) {
             <div className="relative">
               <button
                 onClick={() => setShowNotificationDropdown(!showNotificationDropdown)}
-                className={`relative p-2 rounded-xl border transition flex items-center gap-1.5 ${
+                className={`relative px-3.5 py-2 rounded-xl border text-xs font-bold transition-all duration-150 flex items-center gap-2 cursor-pointer shadow-2xs hover:shadow-xs active:scale-[0.98] ${
                   unreadNewsCount > 0
-                    ? 'bg-rose-50 border-rose-200 text-rose-700 hover:bg-rose-100 shadow-xs'
-                    : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
+                    ? 'bg-rose-50 border-rose-300 text-rose-700 hover:bg-rose-100 shadow-rose-500/10'
+                    : 'bg-white hover:bg-slate-50 border-slate-200 text-slate-700 hover:text-indigo-600 hover:border-indigo-200'
                 }`}
                 title="Admin Notices & Announcements"
               >
-                <Bell className={`w-4 h-4 ${unreadNewsCount > 0 ? 'text-rose-600 animate-bounce' : 'text-slate-500'}`} />
+                <Bell className={`w-3.5 h-3.5 ${unreadNewsCount > 0 ? 'text-rose-600 animate-bounce' : 'text-slate-500'}`} />
                 {unreadNewsCount > 0 && (
-                  <span className="bg-rose-600 text-white text-[10px] font-extrabold px-1.5 py-0.2 rounded-full leading-none">
+                  <span className="bg-rose-600 text-white text-[10px] font-extrabold px-1.5 py-0.2 rounded-full leading-none shadow-2xs">
                     {unreadNewsCount}
                   </span>
                 )}
-                <span className="text-xs font-semibold hidden sm:inline">
+                <span>
                   {unreadNewsCount > 0 ? `${unreadNewsCount} Notices` : 'Notices'}
                 </span>
               </button>
@@ -755,11 +805,11 @@ export default function StudentPortal({ student, onRefreshProfile }) {
                 loadStudentNews();
               }}
               disabled={refreshingProfile}
-              className="p-2 text-slate-500 hover:text-blue-600 hover:bg-slate-50 border border-slate-200 rounded-xl text-xs flex items-center gap-1.5 transition"
+              className="px-3.5 py-2 bg-white hover:bg-blue-50 text-slate-700 hover:text-blue-600 border border-slate-200 hover:border-blue-300 rounded-xl text-xs font-bold flex items-center gap-2 transition-all duration-150 shadow-2xs hover:shadow-xs active:scale-[0.98] cursor-pointer disabled:opacity-50"
               title="Synchronize profile & notices"
             >
-              <RefreshCw className={`w-3.5 h-3.5 ${refreshingProfile ? 'animate-spin' : ''}`} />
-              <span className="hidden sm:inline">Sync</span>
+              <RefreshCw className={`w-3.5 h-3.5 text-blue-600 ${refreshingProfile ? 'animate-spin' : ''}`} />
+              <span>{refreshingProfile ? 'Syncing...' : 'Sync'}</span>
             </button>
           </div>
         </div>
@@ -780,21 +830,21 @@ export default function StudentPortal({ student, onRefreshProfile }) {
 
             {/* Urgent Admin Announcement Alert Banner */}
             {unreadNewsCount > 0 && studentNews.length > 0 && (
-              <div className="bg-gradient-to-r from-indigo-900 via-purple-900 to-indigo-950 p-4 sm:p-5 rounded-2xl text-white shadow-md border border-indigo-500/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 animate-fade-in">
+              <div className="bg-gradient-to-r from-rose-50 via-purple-50/50 to-slate-50 p-4 sm:p-5 rounded-2xl shadow-xs border border-rose-200/80 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 animate-fade-in">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-rose-500/20 text-rose-400 border border-rose-500/30 flex items-center justify-center flex-shrink-0">
-                    <Megaphone className="w-5 h-5 text-rose-400 animate-pulse" />
+                  <div className="w-10 h-10 rounded-xl bg-rose-100 text-rose-700 border border-rose-200 flex items-center justify-center flex-shrink-0">
+                    <Megaphone className="w-5 h-5 text-rose-600 animate-pulse" />
                   </div>
                   <div>
                     <div className="flex items-center gap-2">
-                      <span className="text-[10px] uppercase font-black tracking-wider bg-rose-500 text-white px-2 py-0.5 rounded-full">
+                      <span className="text-[10px] uppercase font-black tracking-wider bg-rose-600 text-white px-2 py-0.5 rounded-full">
                         Admin Broadcast Notice
                       </span>
-                      <span className="text-xs font-semibold text-indigo-200">
+                      <span className="text-xs font-semibold text-slate-500">
                         {unreadNewsCount} unread announcement{unreadNewsCount === 1 ? '' : 's'}
                       </span>
                     </div>
-                    <h4 className="text-sm font-bold text-white mt-1">
+                    <h4 className="text-sm font-bold text-slate-800 mt-1">
                       {studentNews.find(n => !n.is_read)?.title || studentNews[0].title}
                     </h4>
                   </div>
@@ -802,7 +852,7 @@ export default function StudentPortal({ student, onRefreshProfile }) {
 
                 <button
                   onClick={() => setActiveTab('news')}
-                  className="bg-indigo-500 hover:bg-indigo-400 text-white font-bold px-4 py-2 rounded-xl text-xs transition shadow-sm flex items-center gap-1.5 flex-shrink-0"
+                  className="bg-rose-600 hover:bg-rose-700 text-white font-bold px-4 py-2 rounded-xl text-xs transition shadow-sm shadow-rose-500/20 flex items-center gap-1.5 flex-shrink-0"
                 >
                   <span>Read Notice</span>
                   <ArrowRight className="w-3.5 h-3.5" />
@@ -811,81 +861,36 @@ export default function StudentPortal({ student, onRefreshProfile }) {
             )}
             
             {/* Hero Welcome Card */}
-            <div className="bg-gradient-to-r from-blue-900 via-indigo-900 to-slate-900 rounded-3xl p-6 text-white shadow-md flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+            <div className="bg-gradient-to-r from-blue-50 via-indigo-50/60 to-slate-50 rounded-3xl p-6 border border-blue-200/80 shadow-xs flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
               <div>
                 <div className="flex items-center gap-2">
-                  <span className="text-xs bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-2.5 py-0.5 rounded-full font-semibold flex items-center gap-1">
+                  <span className="text-xs bg-emerald-100 text-emerald-800 border border-emerald-200 px-2.5 py-0.5 rounded-full font-bold flex items-center gap-1">
                     <UserCheck className="w-3.5 h-3.5" /> Verified Intern
                   </span>
-                  <span className="text-xs text-blue-200">
+                  <span className="text-xs text-blue-700 font-semibold bg-blue-100/70 border border-blue-200 px-2.5 py-0.5 rounded-full">
                     ID: ATI-STU-{String(profile.id).padStart(4, '0')}
                   </span>
                 </div>
-                <h2 className="text-2xl sm:text-3xl font-extrabold text-white mt-2">
+                <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-800 mt-2.5">
                   Welcome back, {profile.full_name}!
                 </h2>
-                <p className="text-xs sm:text-sm text-blue-200 mt-1 max-w-xl">
+                <p className="text-xs sm:text-sm text-slate-600 font-medium mt-1 max-w-xl">
                   {profile.technology} Trainee | {profile.college_name} ({profile.university})
                 </p>
               </div>
 
-              <div className="bg-white/10 backdrop-blur-md border border-white/20 px-5 py-3 rounded-2xl text-xs flex items-center gap-4">
+              <div className="bg-white/90 backdrop-blur-md border border-blue-200/80 px-5 py-3 rounded-2xl text-xs flex items-center gap-4 shadow-xs">
                 <div>
-                  <div className="text-blue-200 text-[11px] uppercase tracking-wider">Internship Tenure</div>
-                  <div className="text-base font-extrabold text-white mt-0.5">{profile.internship_duration_months} Months</div>
+                  <div className="text-slate-500 text-[11px] font-semibold uppercase tracking-wider">Internship Tenure</div>
+                  <div className="text-base font-extrabold text-blue-700 mt-0.5">{profile.internship_duration_months} Months</div>
                 </div>
-                <div className="border-l border-white/20 pl-4">
-                  <div className="text-blue-200 text-[11px] uppercase tracking-wider">Start Date</div>
-                  <div className="text-base font-extrabold text-white mt-0.5">{profile.internship_start_date}</div>
+                <div className="border-l border-slate-200 pl-4">
+                  <div className="text-slate-500 text-[11px] font-semibold uppercase tracking-wider">Start Date</div>
+                  <div className="text-base font-extrabold text-slate-800 mt-0.5">{profile.internship_start_date}</div>
                 </div>
               </div>
             </div>
 
-            {/* Document Released Notification Banner if Approved */}
-            {(profile.offer_letter_approved || profile.certificate_approved) && (
-              <div className="bg-gradient-to-r from-emerald-500/10 via-blue-500/10 to-indigo-500/10 border border-emerald-200 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-sm">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-emerald-600 text-white flex items-center justify-center flex-shrink-0 shadow">
-                    <Award className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <div className="text-sm font-bold text-slate-900 flex items-center gap-2">
-                      <span>Official Documents Released by Admin!</span>
-                      <span className="bg-emerald-100 text-emerald-800 text-[10px] font-extrabold px-2 py-0.5 rounded-full">Granted</span>
-                    </div>
-                    <p className="text-xs text-slate-600 mt-0.5">
-                      Admin has granted approval for your official PDF documents. You can view or download them right now.
-                    </p>
-                  </div>
-                </div>
-                <div className="flex flex-wrap items-center gap-2">
-                  {profile.offer_letter_approved && (
-                    <a
-                      href={api.getOfferLetterUrl(profile.id, false)}
-                      className="bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs px-3 py-2 rounded-xl transition flex items-center gap-1.5 shadow-sm"
-                    >
-                      <Download className="w-3.5 h-3.5" />
-                      <span>Offer Letter</span>
-                    </a>
-                  )}
-                  {profile.certificate_approved && (
-                    <a
-                      href={api.getCertificateUrl(profile.id, false)}
-                      className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs px-3 py-2 rounded-xl transition flex items-center gap-1.5 shadow-sm"
-                    >
-                      <Download className="w-3.5 h-3.5" />
-                      <span>Certificate</span>
-                    </a>
-                  )}
-                  <button
-                    onClick={() => setActiveTab('profile')}
-                    className="bg-white hover:bg-slate-50 text-slate-700 font-semibold text-xs px-3 py-2 rounded-xl border border-slate-200 transition"
-                  >
-                    View in Profile →
-                  </button>
-                </div>
-              </div>
-            )}
 
             {/* Quick KPI Overview Cards */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -1002,14 +1007,26 @@ export default function StudentPortal({ student, onRefreshProfile }) {
                   </span>
                 </div>
 
-                <div className="text-center py-4 bg-slate-950 text-white rounded-2xl border border-slate-800">
-                  <div className="text-[11px] text-slate-400 uppercase tracking-widest font-semibold">
+                <div className={`text-center py-4 rounded-2xl border shadow-xs ${
+                  timerRunning
+                    ? 'bg-emerald-50/50 border-emerald-200'
+                    : isPaused
+                    ? 'bg-amber-50/50 border-amber-200'
+                    : 'bg-red-50/60 border-red-200/80'
+                }`}>
+                  <div className={`text-[11px] uppercase tracking-widest font-bold ${
+                    timerRunning ? 'text-emerald-700' : isPaused ? 'text-amber-700' : 'text-red-600'
+                  }`}>
                     Current Work Timer
                   </div>
-                  <div className="text-4xl font-mono font-bold text-blue-400 mt-1">
+                  <div className={`text-4xl font-mono font-black mt-1 ${
+                    timerRunning ? 'text-emerald-600' : isPaused ? 'text-amber-600' : 'text-red-600'
+                  }`}>
                     {formatTimer(secondsWorked)}
                   </div>
-                  <div className="text-xs text-slate-400 mt-1">
+                  <div className={`text-xs font-semibold mt-1 ${
+                    timerRunning ? 'text-emerald-700' : isPaused ? 'text-amber-700' : 'text-red-600'
+                  }`}>
                     {timerRunning ? '● Timer Active' : isPaused ? '⏸️ On Break' : attendance?.clock_out ? '✓ Day Ended' : 'Not Clocked In'}
                   </div>
                 </div>
@@ -1018,7 +1035,7 @@ export default function StudentPortal({ student, onRefreshProfile }) {
                   {!attendance || !attendance.clock_in ? (
                     <button
                       onClick={handleClockIn}
-                      className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 rounded-xl transition flex items-center justify-center gap-2 text-sm shadow-sm"
+                      className="w-full bg-blue-600 hover:bg-blue-700 active:scale-[0.98] text-white font-bold py-3 rounded-xl transition-all duration-150 flex items-center justify-center gap-2 text-sm shadow-md shadow-blue-500/20 hover:shadow-lg hover:shadow-blue-500/25 cursor-pointer"
                     >
                       <Play className="w-4 h-4 fill-current" />
                       <span>Clock In for Today</span>
@@ -1032,7 +1049,7 @@ export default function StudentPortal({ student, onRefreshProfile }) {
                       {isPaused ? (
                         <button
                           onClick={handleResume}
-                          className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5 rounded-xl text-xs transition flex items-center justify-center gap-1.5"
+                          className="flex-1 bg-blue-600 hover:bg-blue-700 active:scale-[0.98] text-white font-bold py-2.5 rounded-xl text-xs transition-all duration-150 flex items-center justify-center gap-1.5 shadow-sm hover:shadow cursor-pointer"
                         >
                           <Play className="w-4 h-4 fill-current" />
                           <span>Resume</span>
@@ -1040,7 +1057,7 @@ export default function StudentPortal({ student, onRefreshProfile }) {
                       ) : (
                         <button
                           onClick={() => setShowPauseModal(true)}
-                          className="flex-1 bg-amber-500 hover:bg-amber-600 text-white font-semibold py-2.5 rounded-xl text-xs transition flex items-center justify-center gap-1.5"
+                          className="flex-1 bg-amber-500 hover:bg-amber-600 active:scale-[0.98] text-white font-bold py-2.5 rounded-xl text-xs transition-all duration-150 flex items-center justify-center gap-1.5 shadow-sm hover:shadow cursor-pointer"
                         >
                           <Pause className="w-4 h-4 fill-current" />
                           <span>Pause (Break)</span>
@@ -1048,7 +1065,7 @@ export default function StudentPortal({ student, onRefreshProfile }) {
                       )}
                       <button
                         onClick={handleClockOut}
-                        className="flex-1 bg-rose-600 hover:bg-rose-700 text-white font-semibold py-2.5 rounded-xl text-xs transition flex items-center justify-center gap-1.5"
+                        className="flex-1 bg-rose-600 hover:bg-rose-700 active:scale-[0.98] text-white font-bold py-2.5 rounded-xl text-xs transition-all duration-150 flex items-center justify-center gap-1.5 shadow-sm hover:shadow cursor-pointer"
                       >
                         <Square className="w-4 h-4 fill-current" />
                         <span>Clock Out</span>
@@ -1072,7 +1089,7 @@ export default function StudentPortal({ student, onRefreshProfile }) {
                   </div>
 
                   <p className="text-xs text-slate-600 mt-3 leading-relaxed">
-                    Voice Note 1 requirement: Before leaving for the day, submit your hourly task breakdown detailing what was done during each hour slot (e.g. 2:00–3:00, 3:00–4:00).
+                    Before leaving for the day, submit your hourly task breakdown detailing what was done during each hour slot (e.g. 2:00–3:00, 3:00–4:00).
                   </p>
 
                   <div className="mt-4 p-3 bg-slate-50 border border-slate-100 rounded-xl text-xs space-y-1">
@@ -1094,6 +1111,204 @@ export default function StudentPortal({ student, onRefreshProfile }) {
 
             </div>
 
+            {/* ======================================================== */}
+            {/* MONTHLY ATTENDANCE MINI CALENDAR WIDGET */}
+            {/* ======================================================== */}
+            <div className="bg-white rounded-3xl p-5 sm:p-6 border border-slate-200 shadow-sm space-y-4">
+              
+              {/* Header with Month Selector and Full Register Link */}
+              <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-3 pb-3 border-b border-slate-100">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center flex-shrink-0">
+                    <Calendar className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                      <span>Monthly Attendance Mini Calendar</span>
+                    </h3>
+                    <p className="text-xs text-slate-500">
+                      Overview of office presence, holidays, and working days for <strong className="text-blue-700">{studentDailyAttendance.month_name || studentAttMonth}</strong>
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 self-end sm:self-auto">
+                  {/* Month Navigation */}
+                  <div className="flex items-center bg-slate-50 border border-slate-200 rounded-xl p-0.5">
+                    <button
+                      onClick={handlePrevMonth}
+                      disabled={loadingStudentAtt}
+                      className="p-1.5 text-slate-500 hover:text-slate-800 hover:bg-white rounded-lg transition cursor-pointer"
+                      title="Previous Month"
+                    >
+                      <ChevronLeft className="w-4 h-4" />
+                    </button>
+                    <span className="text-xs font-bold px-2 text-slate-700 min-w-[75px] text-center">
+                      {studentDailyAttendance.month_name ? studentDailyAttendance.month_name.slice(0, 8) : studentAttMonth}
+                    </span>
+                    <button
+                      onClick={handleNextMonth}
+                      disabled={loadingStudentAtt}
+                      className="p-1.5 text-slate-500 hover:text-slate-800 hover:bg-white rounded-lg transition cursor-pointer"
+                      title="Next Month"
+                    >
+                      <ChevronRight className="w-4 h-4" />
+                    </button>
+                  </div>
+
+                  <button
+                    onClick={() => setActiveTab('attendance')}
+                    className="inline-flex items-center gap-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 font-semibold px-3 py-2 rounded-xl text-xs transition border border-blue-200 cursor-pointer"
+                  >
+                    <span>Full Register</span>
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Status Badges Legend */}
+              <div className="flex items-center gap-2 sm:gap-3 text-[11px] font-semibold flex-wrap">
+                <span className="flex items-center gap-1.5 text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+                  <span>Present ({studentDailyAttendance.summary?.days_present || 0})</span>
+                </span>
+                <span className="flex items-center gap-1.5 text-rose-700 bg-rose-50 px-2.5 py-1 rounded-lg border border-rose-200">
+                  <span className="w-2 h-2 rounded-full bg-rose-500"></span>
+                  <span>Absent ({studentDailyAttendance.summary?.days_absent || 0})</span>
+                </span>
+                <span className="flex items-center gap-1.5 text-amber-800 bg-amber-50 px-2.5 py-1 rounded-lg border border-amber-200">
+                  <span className="w-2 h-2 rounded-full bg-amber-500"></span>
+                  <span>🪔 Holiday / Off ({studentDailyAttendance.summary?.holiday_days || 0})</span>
+                </span>
+                <span className="flex items-center gap-1.5 text-slate-600 bg-slate-50 px-2.5 py-1 rounded-lg border border-slate-200">
+                  <span className="w-2 h-2 rounded-full bg-slate-400"></span>
+                  <span>Weekend ({studentDailyAttendance.summary?.weekend_days || 0})</span>
+                </span>
+                <span className="flex items-center gap-1.5 text-blue-700 bg-blue-50 px-2.5 py-1 rounded-lg border border-blue-200 ml-auto font-bold">
+                  <span>Score: {studentDailyAttendance.summary?.attendance_rate || 0}%</span>
+                </span>
+              </div>
+
+              {/* 7-Column Mini Calendar Grid */}
+              <div className="bg-slate-50/70 p-3 sm:p-4 rounded-2xl border border-slate-200">
+                {/* Day of Week Headers */}
+                <div className="grid grid-cols-7 gap-1 sm:gap-1.5 mb-2 text-center">
+                  {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((dayName, idx) => (
+                    <div
+                      key={dayName}
+                      className={`text-[11px] font-bold uppercase py-1 ${
+                        idx >= 5 ? 'text-slate-400' : 'text-slate-600'
+                      }`}
+                    >
+                      {dayName}
+                    </div>
+                  ))}
+                </div>
+
+                {/* Day Grid with Blank Offset Padding */}
+                <div className="grid grid-cols-7 gap-1 sm:gap-1.5">
+                  {(() => {
+                    const records = studentDailyAttendance.daily_records || [];
+                    const firstRecord = records[0];
+                    const firstDayAbbr = firstRecord ? firstRecord.day_name.slice(0, 3) : '';
+                    const offsetMap = { Mon: 0, Tue: 1, Wed: 2, Thu: 3, Fri: 4, Sat: 5, Sun: 6 };
+                    const padCount = offsetMap[firstDayAbbr] ?? 0;
+                    const blanks = Array(padCount).fill(null);
+                    const todayStr = new Date().toISOString().split('T')[0];
+
+                    return (
+                      <>
+                        {blanks.map((_, i) => (
+                          <div key={`blank-${i}`} className="min-h-[44px] rounded-xl bg-transparent" />
+                        ))}
+                        {records.map((d) => {
+                          const isPresent = d.status === 'PRESENT';
+                          const isAbsent = d.status === 'ABSENT';
+                          const isHoliday = d.is_holiday || d.status === 'HOLIDAY';
+                          const isWeekend = d.status === 'WEEKEND';
+                          const isToday = d.date === todayStr;
+
+                          return (
+                            <div
+                              key={d.date}
+                              onClick={() => setActiveTab('attendance')}
+                              className={`relative group rounded-xl p-1.5 sm:p-2 min-h-[52px] border text-center transition flex flex-col justify-between cursor-pointer ${
+                                isPresent
+                                  ? 'bg-emerald-50 border-emerald-300 text-emerald-900 shadow-xs hover:bg-emerald-100'
+                                  : isHoliday
+                                  ? 'bg-gradient-to-b from-amber-50 to-orange-50/70 border-amber-300 text-amber-950 shadow-xs hover:bg-amber-100 ring-1 ring-amber-200'
+                                  : isAbsent
+                                  ? 'bg-rose-50/70 border-rose-200 text-rose-900 hover:bg-rose-100'
+                                  : isWeekend
+                                  ? 'bg-slate-100/70 border-slate-200 text-slate-400 hover:bg-slate-200/60'
+                                  : 'bg-white border-slate-200 text-slate-500 hover:border-slate-300'
+                              } ${isToday ? 'ring-2 ring-blue-600 ring-offset-1 font-bold' : ''}`}
+                              title={`${d.date} (${d.day_name}): ${
+                                isPresent
+                                  ? `Present (${d.duration})`
+                                  : isHoliday
+                                  ? `${d.holiday_name || 'Festival'} (Office Off)`
+                                  : isAbsent
+                                  ? 'Did not come to office (Absent)'
+                                  : isWeekend
+                                  ? 'Weekend (Office Closed)'
+                                  : 'Scheduled Day'
+                              }`}
+                            >
+                              <div className="flex justify-between items-center text-[10px]">
+                                <span className={`font-extrabold text-xs ${isToday ? 'text-blue-700' : ''}`}>
+                                  {d.day_of_month}
+                                </span>
+                                {isToday && (
+                                  <span className="text-[8px] bg-blue-600 text-white font-black px-1 rounded-sm uppercase">
+                                    Today
+                                  </span>
+                                )}
+                              </div>
+
+                              <div className="mt-0.5">
+                                {isPresent ? (
+                                  <span className="text-[9px] font-black text-emerald-700 bg-emerald-100/80 px-1 py-0.5 rounded block truncate">
+                                    🟢 {d.duration ? d.duration.split(' ')[0] : 'In'}
+                                  </span>
+                                ) : isHoliday ? (
+                                  <div className="flex flex-col items-center justify-center my-0.5" title={d.holiday_name}>
+                                    <div className="w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-white border border-amber-300 p-0.5 shadow-xs flex items-center justify-center overflow-hidden">
+                                      <img
+                                        src={getFestivalDetails(d.holiday_name).image}
+                                        alt={d.holiday_name}
+                                        className="w-full h-full object-contain"
+                                      />
+                                    </div>
+                                    <span className="text-[7.5px] font-black text-amber-900 truncate max-w-full block leading-none mt-0.5">
+                                      {getFestivalDetails(d.holiday_name).shortTitle.slice(0, 7)}
+                                    </span>
+                                  </div>
+                                ) : isAbsent ? (
+                                  <span className="text-[9px] font-semibold text-rose-600 block truncate">
+                                    🔴 Off
+                                  </span>
+                                ) : isWeekend ? (
+                                  <span className="text-[9px] text-slate-400 block truncate">
+                                    Off
+                                  </span>
+                                ) : (
+                                  <span className="text-[9px] text-slate-300 block">
+                                    --
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </>
+                    );
+                  })()}
+                </div>
+              </div>
+
+            </div>
+
           </div>
         )}
 
@@ -1104,21 +1319,21 @@ export default function StudentPortal({ student, onRefreshProfile }) {
           <div className="space-y-6">
             
             {/* Header Card */}
-            <div className="bg-gradient-to-r from-indigo-900 via-purple-900 to-slate-900 rounded-3xl p-6 text-white shadow-md flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+            <div className="bg-gradient-to-r from-indigo-50 via-purple-50/60 to-slate-50 rounded-3xl p-6 border border-indigo-200/80 shadow-xs flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
               <div>
                 <div className="flex items-center gap-2">
-                  <span className="text-xs bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 px-2.5 py-0.5 rounded-full font-semibold flex items-center gap-1">
-                    <Megaphone className="w-3.5 h-3.5" />
+                  <span className="text-xs bg-indigo-100 text-indigo-800 border border-indigo-200 px-2.5 py-0.5 rounded-full font-bold flex items-center gap-1">
+                    <Megaphone className="w-3.5 h-3.5 text-indigo-700" />
                     <span>Official Admin Notice Board</span>
                   </span>
-                  <span className="text-xs bg-white/10 text-white/80 px-2.5 py-0.5 rounded-full">
+                  <span className="text-xs text-indigo-700 font-semibold bg-indigo-100/70 border border-indigo-200 px-2.5 py-0.5 rounded-full">
                     {studentNews.length} Total Notices
                   </span>
                 </div>
-                <h2 className="text-2xl font-black mt-2 tracking-tight">
+                <h2 className="text-2xl font-black text-slate-800 mt-2.5 tracking-tight">
                   News & Announcements
                 </h2>
-                <p className="text-xs text-indigo-200/80 mt-1 max-w-xl">
+                <p className="text-xs sm:text-sm text-slate-600 font-medium mt-1 max-w-xl">
                   Official notices, schedule changes, project deadlines, exam alerts, and circulars broadcasted by Admin to your domain ({profile.technology}).
                 </p>
               </div>
@@ -1126,9 +1341,9 @@ export default function StudentPortal({ student, onRefreshProfile }) {
               {unreadNewsCount > 0 && (
                 <button
                   onClick={handleMarkAllNoticesRead}
-                  className="bg-white hover:bg-indigo-50 text-indigo-900 font-bold px-4 py-2.5 rounded-xl text-xs flex items-center gap-2 transition shadow-sm"
+                  className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-4 py-2.5 rounded-xl text-xs flex items-center gap-2 transition shadow-sm shadow-indigo-500/20"
                 >
-                  <Check className="w-4 h-4 text-indigo-700" />
+                  <Check className="w-4 h-4 text-white" />
                   <span>Mark All as Read ({unreadNewsCount})</span>
                 </button>
               )}
@@ -1296,7 +1511,22 @@ export default function StudentPortal({ student, onRefreshProfile }) {
             {/* Header Card */}
             <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-6">
               <div className="flex items-start sm:items-center gap-4">
-                <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-blue-600 via-indigo-600 to-purple-600 text-white flex items-center justify-center font-bold text-2xl shadow-md flex-shrink-0">
+                {profile.profile_photo_url || profile.profile_photo ? (
+                  <img
+                    src={api.getMediaUrl(profile.profile_photo_url || profile.profile_photo)}
+                    alt={profile.full_name}
+                    onError={(e) => {
+                      e.currentTarget.style.display = 'none';
+                      const sibling = e.currentTarget.nextElementSibling;
+                      if (sibling) sibling.style.display = 'flex';
+                    }}
+                    className="w-16 h-16 rounded-2xl object-cover shadow-md flex-shrink-0 border-2 border-white ring-2 ring-blue-500/30"
+                  />
+                ) : null}
+                <div
+                  className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-blue-600 via-indigo-600 to-purple-600 text-white items-center justify-center font-bold text-2xl shadow-md flex-shrink-0"
+                  style={{ display: profile.profile_photo_url || profile.profile_photo ? 'none' : 'flex' }}
+                >
                   {profile.full_name?.charAt(0) || 'S'}
                 </div>
                 <div>
@@ -1320,7 +1550,7 @@ export default function StudentPortal({ student, onRefreshProfile }) {
               <div className="flex items-center gap-3 self-end md:self-auto">
                 <button
                   onClick={handleOpenEditProfile}
-                  className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold px-4 py-2.5 rounded-xl text-xs transition shadow-sm"
+                  className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-bold px-4 py-2.5 rounded-xl text-xs transition-all duration-150 shadow-sm hover:shadow cursor-pointer active:scale-[0.98]"
                 >
                   <Edit className="w-3.5 h-3.5" />
                   <span>Edit Profile</span>
@@ -1328,9 +1558,9 @@ export default function StudentPortal({ student, onRefreshProfile }) {
                 <button
                   onClick={() => loadLatestProfile(false)}
                   disabled={refreshingProfile}
-                  className="inline-flex items-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold px-4 py-2.5 rounded-xl text-xs transition"
+                  className="inline-flex items-center gap-2 bg-white hover:bg-blue-50 text-slate-700 hover:text-blue-600 border border-slate-200 hover:border-blue-300 font-bold px-4 py-2.5 rounded-xl text-xs transition-all duration-150 shadow-2xs hover:shadow-xs cursor-pointer active:scale-[0.98] disabled:opacity-50"
                 >
-                  <RefreshCw className={`w-3.5 h-3.5 ${refreshingProfile ? 'animate-spin text-blue-600' : ''}`} />
+                  <RefreshCw className={`w-3.5 h-3.5 ${refreshingProfile ? 'animate-spin text-blue-600' : 'text-blue-600'}`} />
                   <span>{refreshingProfile ? 'Syncing...' : 'Sync Profile & Status'}</span>
                 </button>
               </div>
@@ -1370,6 +1600,32 @@ export default function StudentPortal({ student, onRefreshProfile }) {
                 <span className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">Portal Role</span>
                 <div className="text-xs font-bold text-emerald-700">Trainee / Intern</div>
               </div>
+              {profile.gender && (
+                <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-1">
+                  <span className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">Gender</span>
+                  <div className="text-xs font-semibold text-slate-900">{profile.gender}</div>
+                </div>
+              )}
+              {profile.degree && (
+                <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-1">
+                  <span className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">Degree / Course</span>
+                  <div className="text-xs font-semibold text-slate-900">{profile.degree}</div>
+                </div>
+              )}
+              {profile.semester && (
+                <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-1">
+                  <span className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">Current Semester</span>
+                  <div className="text-xs font-semibold text-slate-900">Semester {profile.semester}</div>
+                </div>
+              )}
+              {profile.address && (
+                <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-1 md:col-span-2 lg:col-span-4">
+                  <span className="text-[10px] font-bold uppercase text-slate-400 tracking-wider flex items-center gap-1">
+                    <MapPin className="w-3 h-3 text-rose-500 inline" /> Address
+                  </span>
+                  <div className="text-xs font-semibold text-slate-900">{profile.address}</div>
+                </div>
+              )}
             </div>
 
             {/* Official Documents Granted by Admin (Direct Grant inside Profile) */}
@@ -1381,7 +1637,7 @@ export default function StudentPortal({ student, onRefreshProfile }) {
                     <h3 className="text-lg font-bold text-slate-900">Official Internship Documents</h3>
                   </div>
                   <p className="text-xs text-slate-500 mt-1">
-                    Voice Note 2: Documents are released upon Admin approval. You can view or download them directly from your profile below.
+                    Documents are released upon Admin approval. You can view or download them directly from your profile below.
                   </p>
                 </div>
                 <div className="flex items-center gap-2">
@@ -1515,7 +1771,7 @@ export default function StudentPortal({ student, onRefreshProfile }) {
         )}
 
         {/* ======================================================== */}
-        {/* 2. CLOCK-IN & TIME TRACKER (VOICE NOTE 1) */}
+        {/* 2. CLOCK-IN & TIME TRACKER */}
         {/* ======================================================== */}
         {activeTab === 'attendance' && (
           <div className="space-y-8">
@@ -1552,14 +1808,26 @@ export default function StudentPortal({ student, onRefreshProfile }) {
                   </div>
 
                   {/* Digital Timer */}
-                  <div className="my-6 text-center bg-slate-950 text-white rounded-2xl p-6 shadow-inner border border-slate-800">
-                    <div className="text-xs text-slate-400 uppercase tracking-widest font-semibold mb-1">
+                  <div className={`my-6 text-center rounded-2xl p-6 border shadow-xs ${
+                    timerRunning
+                      ? 'bg-emerald-50/50 border-emerald-200'
+                      : isPaused
+                      ? 'bg-amber-50/50 border-amber-200'
+                      : 'bg-red-50/60 border-red-200/80'
+                  }`}>
+                    <div className={`text-xs uppercase tracking-widest font-bold mb-1 ${
+                      timerRunning ? 'text-emerald-700' : isPaused ? 'text-amber-700' : 'text-red-600'
+                    }`}>
                       Today's Working Hours
                     </div>
-                    <div className="text-5xl font-mono font-bold tracking-tight text-blue-400">
+                    <div className={`text-5xl font-mono font-black tracking-tight ${
+                      timerRunning ? 'text-emerald-600' : isPaused ? 'text-amber-600' : 'text-red-600'
+                    }`}>
                       {formatTimer(secondsWorked)}
                     </div>
-                    <div className="text-xs text-slate-400 mt-2">
+                    <div className={`text-xs font-semibold mt-2 ${
+                      timerRunning ? 'text-emerald-700' : isPaused ? 'text-amber-700' : 'text-red-600'
+                    }`}>
                       Date: {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}
                     </div>
                   </div>
@@ -1569,7 +1837,7 @@ export default function StudentPortal({ student, onRefreshProfile }) {
                     {!attendance || !attendance.clock_in ? (
                       <button
                         onClick={handleClockIn}
-                        className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3.5 px-4 rounded-xl shadow-md transition flex items-center justify-center gap-2 text-base"
+                        className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3.5 px-4 rounded-xl shadow-md shadow-blue-500/20 transition flex items-center justify-center gap-2 text-base"
                       >
                         <Play className="w-5 h-5 fill-current" />
                         <span>Clock In for Today</span>
@@ -1920,11 +2188,11 @@ export default function StudentPortal({ student, onRefreshProfile }) {
                     return (
                       <div
                         key={d.date}
-                        className={`p-2.5 rounded-xl border text-center transition flex flex-col justify-between min-h-[74px] ${
+                        className={`p-2 rounded-xl border text-center transition flex flex-col justify-between min-h-[86px] ${
                           isPresent
                             ? 'bg-emerald-50/80 border-emerald-300 text-emerald-950 shadow-xs'
                             : isHoliday
-                            ? 'bg-amber-50/90 border-amber-300 text-amber-950 shadow-xs ring-1 ring-amber-200'
+                            ? 'bg-gradient-to-b from-amber-50 to-orange-50/70 border-amber-300 text-amber-950 shadow-xs ring-1 ring-amber-200'
                             : isAbsent
                             ? 'bg-rose-50/80 border-rose-300 text-rose-950 shadow-xs'
                             : isWeekend
@@ -1935,7 +2203,7 @@ export default function StudentPortal({ student, onRefreshProfile }) {
                       >
                         <div className="flex justify-between items-center text-[10px] font-bold">
                           <span>{d.day_name.slice(0, 3)}</span>
-                          <span className="font-extrabold text-xs">{d.day_of_month}</span>
+                          <span className={`font-extrabold text-xs ${isToday ? 'text-blue-700' : ''}`}>{d.day_of_month}</span>
                         </div>
 
                         <div className="my-1">
@@ -1945,17 +2213,31 @@ export default function StudentPortal({ student, onRefreshProfile }) {
                                 🟢 {d.duration}
                               </span>
                               {d.is_holiday && (
-                                <span className="text-[8px] font-black text-amber-700 bg-amber-100 rounded px-1 mt-0.5 block truncate">
-                                  🪔 {d.holiday_name}
-                                </span>
+                                <div className="flex items-center justify-center gap-1 mt-1 bg-amber-100 border border-amber-300 rounded px-1 py-0.5">
+                                  <img
+                                    src={getFestivalDetails(d.holiday_name).image}
+                                    alt={d.holiday_name}
+                                    className="w-3.5 h-3.5 rounded-full object-contain"
+                                  />
+                                  <span className="text-[8px] font-black text-amber-800 truncate">
+                                    {getFestivalDetails(d.holiday_name).shortTitle}
+                                  </span>
+                                </div>
                               )}
                             </div>
                           ) : isHoliday ? (
-                            <div>
-                              <span className="text-[9px] font-black text-amber-900 bg-amber-100 border border-amber-300 px-1 py-0.5 rounded block truncate" title={d.holiday_name}>
-                                🪔 {d.holiday_name || 'Festival'}
+                            <div className="flex flex-col items-center justify-center my-0.5" title={d.holiday_name}>
+                              <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-white p-0.5 border-2 border-amber-300 shadow-xs flex items-center justify-center overflow-hidden hover:scale-110 transition">
+                                <img
+                                  src={getFestivalDetails(d.holiday_name).image}
+                                  alt={d.holiday_name}
+                                  className="w-full h-full object-contain"
+                                />
+                              </div>
+                              <span className="text-[8.5px] font-black text-amber-950 mt-1 block truncate max-w-full px-0.5 leading-tight" title={d.holiday_name}>
+                                {getFestivalDetails(d.holiday_name).shortTitle}
                               </span>
-                              <span className="text-[9px] font-black text-amber-700 uppercase tracking-tight block mt-0.5">
+                              <span className="text-[7.5px] font-extrabold text-amber-700 uppercase tracking-tight">
                                 Day Off
                               </span>
                             </div>
@@ -1979,8 +2261,8 @@ export default function StudentPortal({ student, onRefreshProfile }) {
                             Today
                           </span>
                         ) : isHoliday ? (
-                          <span className="text-[8px] font-bold text-amber-600 uppercase tracking-tighter">
-                            Office Off
+                          <span className="text-[8px] font-extrabold text-amber-700 uppercase tracking-tighter">
+                            Office Closed
                           </span>
                         ) : null}
                       </div>
@@ -2072,15 +2354,24 @@ export default function StudentPortal({ student, onRefreshProfile }) {
                                         <span>Came to Office (Present)</span>
                                       </span>
                                       {row.is_holiday && (
-                                        <div className="text-[11px] text-amber-700 font-bold ml-1">
-                                          🪔 {row.holiday_name} (Festival Attended)
+                                        <div className="flex items-center gap-1.5 text-[11px] text-amber-800 font-bold ml-1 mt-0.5">
+                                          <img
+                                            src={getFestivalDetails(row.holiday_name).image}
+                                            alt={row.holiday_name}
+                                            className="w-4 h-4 rounded-full object-contain bg-white p-0.5 border border-amber-300"
+                                          />
+                                          <span>{row.holiday_name} (Festival Attended)</span>
                                         </div>
                                       )}
                                     </div>
                                   ) : isHoliday ? (
-                                    <span className="inline-flex items-center gap-1.5 bg-amber-100 text-amber-900 border border-amber-300 font-extrabold px-3 py-1 rounded-xl text-xs shadow-xs">
-                                      <Sparkles className="w-3.5 h-3.5 text-amber-600" />
-                                      <span>🪔 Festival Day Off: {row.holiday_name}</span>
+                                    <span className="inline-flex items-center gap-2 bg-gradient-to-r from-amber-50 to-orange-50 text-amber-950 border border-amber-300 font-extrabold px-3 py-1.5 rounded-xl text-xs shadow-xs">
+                                      <img
+                                        src={getFestivalDetails(row.holiday_name).image}
+                                        alt={row.holiday_name}
+                                        className="w-5 h-5 rounded-full object-contain bg-white p-0.5 border border-amber-300 shadow-xs"
+                                      />
+                                      <span>Day Off: {row.holiday_name}</span>
                                     </span>
                                   ) : isAbsent ? (
                                     <span className="inline-flex items-center gap-1.5 bg-rose-100 text-rose-800 border border-rose-300 font-extrabold px-3 py-1 rounded-xl text-xs">
@@ -2174,7 +2465,7 @@ export default function StudentPortal({ student, onRefreshProfile }) {
         )}
 
         {/* ======================================================== */}
-        {/* 3. DAILY WORK REPORTS (VOICE NOTE 1) */}
+        {/* 3. DAILY WORK REPORTS */}
         {/* ======================================================== */}
         {activeTab === 'reports' && (
           <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 space-y-6">
@@ -2305,7 +2596,7 @@ export default function StudentPortal({ student, onRefreshProfile }) {
         )}
 
         {/* ======================================================== */}
-        {/* 4. ALLOCATED STUDY NOTES (VOICE NOTE 3) */}
+        {/* 4. ALLOCATED STUDY NOTES */}
         {/* ======================================================== */}
         {activeTab === 'notes' && (
           <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 space-y-6">
@@ -2316,7 +2607,7 @@ export default function StudentPortal({ student, onRefreshProfile }) {
                   <span>My Allocated Study Notes</span>
                 </h3>
                 <p className="text-xs text-slate-500 mt-0.5">
-                  Voice Note 3: You can only view notes for subjects that have been allocated to you by the Admin.
+                  You can only view notes for subjects that have been allocated to you by the Admin.
                 </p>
               </div>
               <div className="flex gap-1.5 flex-wrap">
@@ -2402,7 +2693,7 @@ export default function StudentPortal({ student, onRefreshProfile }) {
         )}
 
         {/* ======================================================== */}
-        {/* 5. MCQ EXAM MODULE (VOICE NOTE 2) */}
+        {/* 5. MCQ EXAM MODULE */}
         {/* ======================================================== */}
         {activeTab === 'mcq' && (
           <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 space-y-6">
@@ -2412,7 +2703,7 @@ export default function StudentPortal({ student, onRefreshProfile }) {
                 <span>MCQ Examination & Evaluation Module</span>
               </h3>
               <p className="text-xs text-slate-500 mt-0.5">
-                Voice Note 2: Take category-wise technical tests. Your score is automatically evaluated and submitted to the Admin.
+                Take category-wise technical tests. Your score is automatically evaluated and submitted to the Admin.
               </p>
             </div>
 
@@ -2559,7 +2850,7 @@ export default function StudentPortal({ student, onRefreshProfile }) {
         )}
 
         {/* ======================================================== */}
-        {/* 6. DOCUMENTS & CERTIFICATES (VOICE NOTE 2) */}
+        {/* 6. DOCUMENTS & CERTIFICATES */}
         {/* ======================================================== */}
         {activeTab === 'documents' && (
           <div className="bg-white rounded-3xl p-6 sm:p-8 shadow-sm border border-slate-200 space-y-6">
@@ -2570,7 +2861,7 @@ export default function StudentPortal({ student, onRefreshProfile }) {
                   <span>Official Internship Documents (PDF)</span>
                 </h3>
                 <p className="text-xs text-slate-500 mt-1">
-                  Voice Note 2: Auto-generated official documents. Enabled once verified and granted by Admin.
+                  Auto-generated official documents. Enabled once verified and granted by Admin.
                 </p>
               </div>
 
@@ -2935,6 +3226,74 @@ export default function StudentPortal({ student, onRefreshProfile }) {
                     <span>{profileFieldErrors.technology}</span>
                   </p>
                 )}
+              </div>
+
+              {/* Gender & Degree */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Gender</label>
+                  <select
+                    value={editProfileData.gender}
+                    onChange={(e) => updateProfileField('gender', e.target.value)}
+                    className="w-full px-3 py-2 text-xs sm:text-sm border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium transition bg-white"
+                  >
+                    <option value="">Select Gender</option>
+                    <option value="Male">Male</option>
+                    <option value="Female">Female</option>
+                    <option value="Other">Other</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Degree / Program</label>
+                  <select
+                    value={editProfileData.degree}
+                    onChange={(e) => updateProfileField('degree', e.target.value)}
+                    className="w-full px-3 py-2 text-xs sm:text-sm border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium transition bg-white"
+                  >
+                    <option value="">Select Degree</option>
+                    <option value="B.Tech / B.E.">B.Tech / B.E.</option>
+                    <option value="BCA">BCA</option>
+                    <option value="MCA">MCA</option>
+                    <option value="B.Sc. IT / CS">B.Sc. IT / CS</option>
+                    <option value="M.Sc. IT / CS">M.Sc. IT / CS</option>
+                    <option value="Diploma Engineering">Diploma Engineering</option>
+                    <option value="B.Com / BBA">B.Com / BBA</option>
+                    <option value="Other Degree">Other Degree</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Semester */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Semester (1 - 10)</label>
+                <select
+                  value={editProfileData.semester}
+                  onChange={(e) => updateProfileField('semester', e.target.value)}
+                  className="w-full px-3 py-2 text-xs sm:text-sm border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium transition bg-white"
+                >
+                  <option value="">Select Semester</option>
+                  {[...Array(10)].map((_, i) => (
+                    <option key={i + 1} value={i + 1}>
+                      Semester {i + 1}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Residential Address */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Residential Address</label>
+                <div className="relative">
+                  <MapPin className="w-4 h-4 absolute left-3 top-2.5 text-slate-400" />
+                  <input
+                    type="text"
+                    value={editProfileData.address}
+                    onChange={(e) => updateProfileField('address', e.target.value)}
+                    placeholder="Enter your current address"
+                    className="w-full pl-9 pr-3 py-2 text-xs sm:text-sm border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium transition"
+                  />
+                </div>
               </div>
 
               <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-100">

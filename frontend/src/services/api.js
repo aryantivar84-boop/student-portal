@@ -1,12 +1,24 @@
 const API_BASE = 'http://localhost:8000/api';
 
+export const getMediaUrl = (urlOrPath) => {
+  if (!urlOrPath) return '';
+  if (typeof urlOrPath !== 'string') return '';
+  if (urlOrPath.startsWith('http://') || urlOrPath.startsWith('https://') || urlOrPath.startsWith('data:') || urlOrPath.startsWith('blob:')) {
+    return urlOrPath;
+  }
+  const cleanPath = urlOrPath.startsWith('/') ? urlOrPath : `/${urlOrPath}`;
+  return `http://localhost:8000${cleanPath}`;
+};
+
 export const api = {
+  getMediaUrl,
   // Auth
   register: async (data) => {
+    const isFormData = data instanceof FormData;
     const res = await fetch(`${API_BASE}/auth/register/`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data)
+      headers: isFormData ? {} : { 'Content-Type': 'application/json' },
+      body: isFormData ? data : JSON.stringify(data)
     });
     return res.json();
   },
@@ -87,6 +99,15 @@ export const api = {
 
   verifyStudent: async (studentId, action) => {
     const res = await fetch(`${API_BASE}/admin/students/${studentId}/verify/`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action })
+    });
+    return res.json();
+  },
+
+  verifyAllStudents: async (action = 'approve') => {
+    const res = await fetch(`${API_BASE}/admin/students/verify-all/`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ action })

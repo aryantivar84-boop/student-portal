@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="100%" height="100%">
+  <defs>
+    <linearGradient id="bg_rep" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#FFF3E0"/>
+      <stop offset="50%" stop-color="#FFFFFF"/>
+      <stop offset="100%" stop-color="#E8F5E9"/>
+    </linearGradient>
+  </defs>
+  <!-- Background -->
+  <circle cx="60" cy="60" r="54" fill="url(#bg_rep)" stroke="#FF9933" stroke-width="2.5"/>
+
+  <!-- Tricolor Waving Ribbons -->
+  <path d="M 22 40 C 40 32 50 48 70 40 C 85 34 92 40 98 42 L 98 52 C 85 48 75 56 60 54 C 42 50 30 56 22 52 Z" fill="#FF9933"/>
+  <path d="M 22 52 C 35 56 45 50 60 54 C 75 58 85 48 98 52 L 98 62 C 85 58 75 66 60 64 C 42 60 30 66 22 62 Z" fill="#FFFFFF" stroke="#ECEFF1" stroke-width="0.5"/>
+  <path d="M 22 62 C 35 66 45 60 60 64 C 75 68 85 58 98 62 L 98 72 C 85 68 75 76 60 74 C 42 70 30 76 22 72 Z" fill="#138808"/>
+
+  <!-- Ashoka Chakra (24 Spokes) -->
+  <g transform="translate(60, 57)">
+    <circle cx="0" cy="0" r="11" fill="#FFFFFF" stroke="#000080" stroke-width="1.5"/>
+    <circle cx="0" cy="0" r="2.5" fill="#000080"/>
+    <!-- 8 spokes represented cleanly -->
+    <line x1="0" y1="-11" x2="0" y2="11" stroke="#000080" stroke-width="0.8"/>
+    <line x1="-11" y1="0" x2="11" y2="0" stroke="#000080" stroke-width="0.8"/>
+    <line x1="-7.8" y1="-7.8" x2="7.8" y2="7.8" stroke="#000080" stroke-width="0.8"/>
+    <line x1="-7.8" y1="7.8" x2="7.8" y2="-7.8" stroke="#000080" stroke-width="0.8"/>
+    <line x1="-4.2" y1="-10.1" x2="4.2" y2="10.1" stroke="#000080" stroke-width="0.8"/>
+    <line x1="4.2" y1="-10.1" x2="-4.2" y2="10.1" stroke="#000080" stroke-width="0.8"/>
+    <line x1="-10.1" y1="-4.2" x2="10.1" y2="4.2" stroke="#000080" stroke-width="0.8"/>
+    <line x1="10.1" y1="-4.2" x2="-10.1" y2="4.2" stroke="#000080" stroke-width="0.8"/>
+  </g>
+
+  <!-- Bottom Pill -->
+  <rect x="20" y="90" width="80" height="18" rx="9" fill="#0D47A1"/>
+  <text x="60" y="103" text-anchor="middle" font-family="Arial, sans-serif" font-weight="900" font-size="8" fill="#FFFFFF" letter-spacing="0.5">REPUBLIC DAY</text>
+</svg>

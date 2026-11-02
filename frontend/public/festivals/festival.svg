@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="100%" height="100%">
+  <defs>
+    <radialGradient id="bg_fest" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#FFF3E0"/>
+      <stop offset="60%" stop-color="#FFE082"/>
+      <stop offset="100%" stop-color="#FFB300"/>
+    </radialGradient>
+    <linearGradient id="fest_flame" x1="0%" y1="100%" x2="0%" y2="0%">
+      <stop offset="0%" stop-color="#FF5722"/>
+      <stop offset="60%" stop-color="#FFEB3B"/>
+      <stop offset="100%" stop-color="#FFFFFF"/>
+    </linearGradient>
+  </defs>
+  <!-- Background -->
+  <circle cx="60" cy="60" r="54" fill="url(#bg_fest)" stroke="#FF8F00" stroke-width="2.5"/>
+
+  <!-- Decorative Garland / Toran Arc -->
+  <path d="M 22 36 Q 40 46 60 40 Q 80 46 98 36" fill="none" stroke="#D84315" stroke-width="2"/>
+  <circle cx="40" cy="42" r="3" fill="#D50000"/>
+  <circle cx="60" cy="40" r="3" fill="#4CAF50"/>
+  <circle cx="80" cy="42" r="3" fill="#D50000"/>
+
+  <!-- Golden Diya -->
+  <g transform="translate(60, 64)">
+    <path d="M -24 0 C -22 14 22 14 24 0 C 16 6 -16 6 -24 0 Z" fill="#E65100" stroke="#FFD54F" stroke-width="1.5"/>
+    <ellipse cx="0" cy="0" rx="22" ry="4" fill="#BF360C"/>
+    <!-- Flame -->
+    <path d="M 0 -26 C -8 -14 -6 0 0 0 C 6 0 8 -14 0 -26 Z" fill="url(#fest_flame)"/>
+    <ellipse cx="0" cy="-8" rx="2" ry="5" fill="#FFFFFF"/>
+  </g>
+
+  <!-- Sparkles -->
+  <polygon points="30,22 32,25 35,25 33,27 34,30 30,28 26,30 27,27 25,25 28,25" fill="#FFD700"/>
+  <polygon points="90,22 92,25 95,25 93,27 94,30 90,28 86,30 87,27 85,25 88,25" fill="#FFD700"/>
+
+  <!-- Bottom Pill -->
+  <rect x="22" y="90" width="76" height="18" rx="9" fill="#E65100"/>
+  <text x="60" y="103" text-anchor="middle" font-family="Arial, sans-serif" font-weight="900" font-size="8.5" fill="#FFFFFF" letter-spacing="0.5">FESTIVAL DAY</text>
+</svg>

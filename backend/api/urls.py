@@ -9,6 +9,7 @@ urlpatterns = [
 
     # Admin Management
     path('admin/students/', views.admin_get_students, name='admin_get_students'),
+    path('admin/students/verify-all/', views.admin_verify_all_students, name='admin_verify_all_students'),
     path('admin/students/<int:student_id>/verify/', views.admin_verify_student, name='admin_verify_student'),
     path('admin/students/<int:student_id>/documents/', views.admin_toggle_documents, name='admin_toggle_documents'),
     path('admin/students/<int:student_id>/offer-letter/', views.admin_update_offer_letter, name='admin_update_offer_letter'),

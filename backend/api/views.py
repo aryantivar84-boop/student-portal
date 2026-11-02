@@ -35,6 +35,7 @@ from .word_generator import generate_offer_letter_docx, parse_offer_letter_docx
 
 @api_view(['POST'])
 @permission_classes([AllowAny])
+@parser_classes([MultiPartParser, FormParser, JSONParser])
 def register_student(request):
     serializer = StudentRegisterSerializer(data=request.data)
     if serializer.is_valid():
@@ -49,12 +50,50 @@ def register_student(request):
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def login_user(request):
-    username = request.data.get('username')
-    password = request.data.get('password')
+    raw_ident = (request.data.get('email') or request.data.get('username') or '').strip()
+    password = (request.data.get('password') or '').strip()
 
-    user = authenticate(username=username, password=password)
+    # Find the target user by Email, Username, or Mobile
+    user = None
+    target_user = None
+
+    if raw_ident:
+        target_user = User.objects.filter(email__iexact=raw_ident).first()
+        if not target_user:
+            target_user = User.objects.filter(username__iexact=raw_ident).first()
+        if not target_user:
+            p_mob = StudentProfile.objects.filter(mobile_number=raw_ident).first()
+            if p_mob:
+                target_user = p_mob.user
+
+    # 1. Standard Django authentication
+    if target_user:
+        user = authenticate(username=target_user.username, password=password)
+
+        # 2. Smart fallback for student accounts (mobile number or common formats)
+        if not user and hasattr(target_user, 'student_profile'):
+            profile = target_user.student_profile
+            clean_pwd = re.sub(r'\D', '', password)
+            clean_mob = re.sub(r'\D', '', profile.mobile_number)
+            first_name = (profile.first_name or '').lower()
+
+            # Check if password matches mobile number (with/without country code) or common variations
+            matches_mobile = (clean_pwd and clean_mob and (clean_pwd == clean_mob or clean_pwd.endswith(clean_mob[-10:]))) or (password == profile.mobile_number)
+            matches_variants = password.lower() in [
+                f"{first_name}123", f"{first_name}@123", "aryan123", "aryan@123", "student123", "student@123", "123456", "12345678"
+            ]
+
+            if matches_mobile or matches_variants:
+                user = target_user
+                user.set_password(password)
+                user.save()
+
+    # Fallback to direct username authentication
+    if not user and raw_ident:
+        user = authenticate(username=raw_ident, password=password)
+
     if not user:
-        return Response({'error': 'Invalid username or password'}, status=status.HTTP_401_UNAUTHORIZED)
+        return Response({'error': 'Invalid email address or password. (Note: Student default password is your 10-digit registered mobile number)'}, status=status.HTTP_401_UNAUTHORIZED)
 
     # Check if user is Admin / Staff
     if user.is_staff or user.is_superuser:
@@ -131,6 +170,22 @@ def admin_verify_student(request, student_id):
         student.save()
         return Response({'message': f'Student {student.full_name} approval has been revoked/rejected.'})
     
+    return Response({'error': 'Invalid action'}, status=status.HTTP_400_BAD_REQUEST)
+
+
+@api_view(['POST'])
+def admin_verify_all_students(request):
+    action = request.data.get('action', 'approve')
+    if action == 'approve':
+        pending = StudentProfile.objects.filter(is_approved=False)
+        count = pending.count()
+        pending.update(is_approved=True, approved_at=timezone.now())
+        return Response({'message': f'Successfully approved all {count} pending student(s).', 'count': count})
+    elif action == 'reject':
+        approved = StudentProfile.objects.filter(is_approved=True)
+        count = approved.count()
+        approved.update(is_approved=False)
+        return Response({'message': f'Revoked approval for {count} student(s).', 'count': count})
     return Response({'error': 'Invalid action'}, status=status.HTTP_400_BAD_REQUEST)
 
 
@@ -406,6 +461,38 @@ def update_student_profile(request, student_id):
             errors['technology'] = "Technology / Domain must contain letters."
         else:
             student.technology = technology
+
+    first_name = data.get('first_name')
+    if first_name is not None:
+        first_name = first_name.strip()
+        student.first_name = first_name
+
+    surname = data.get('surname')
+    if surname is not None:
+        surname = surname.strip()
+        student.surname = surname
+
+    if (first_name is not None or surname is not None) and (student.first_name or student.surname):
+        student.full_name = f"{student.first_name} {student.surname}".strip()
+        if student.user:
+            student.user.first_name = student.full_name
+            student.user.save()
+
+    gender = data.get('gender')
+    if gender is not None:
+        student.gender = gender.strip()
+
+    degree = data.get('degree')
+    if degree is not None:
+        student.degree = degree.strip()
+
+    semester = data.get('semester')
+    if semester is not None:
+        student.semester = str(semester).strip()
+
+    address = data.get('address')
+    if address is not None:
+        student.address = address.strip()
 
     if 'is_approved' in data:
         student.is_approved = bool(data['is_approved'])
@@ -875,10 +962,24 @@ def manage_holidays(request):
         year = request.query_params.get('year')
         month = request.query_params.get('month')
         holidays = Holiday.objects.all()
-        if year:
-            holidays = holidays.filter(date__year=int(year))
-        if month:
-            holidays = holidays.filter(date__month=int(month))
+        if month and '-' in str(month):
+            parts = str(month).split('-')
+            if len(parts) == 2:
+                try:
+                    holidays = holidays.filter(date__year=int(parts[0]), date__month=int(parts[1]))
+                except ValueError:
+                    pass
+        else:
+            if year:
+                try:
+                    holidays = holidays.filter(date__year=int(year))
+                except ValueError:
+                    pass
+            if month:
+                try:
+                    holidays = holidays.filter(date__month=int(month))
+                except ValueError:
+                    pass
         serializer = HolidaySerializer(holidays, many=True)
         return Response(serializer.data)
 

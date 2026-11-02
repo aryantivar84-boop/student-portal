@@ -1,33 +1,35 @@
 import React from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { Building2, LogOut, UserCheck, ShieldCheck, User } from 'lucide-react';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { LogOut, UserCheck, ShieldCheck, User } from 'lucide-react';
+import logo from '../assets/logo.png';
 
 export default function Navbar({ currentUser, onLogout }) {
   const navigate = useNavigate();
+  const location = useLocation();
+
+  const isAuthPage = location.pathname === '/login' || location.pathname === '/register';
+  // On login/register page, hide logged-in user credentials
+  const showUser = currentUser && !isAuthPage;
 
   return (
     <header className="bg-white/90 backdrop-blur-md border-b border-slate-200 text-slate-800 sticky top-0 z-40 shadow-xs">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
         
         {/* Brand */}
-        <Link to="/" className="flex items-center space-x-3 group">
-          <div className="bg-gradient-to-tr from-blue-600 to-indigo-600 p-2.5 rounded-xl flex items-center justify-center text-white shadow-md shadow-blue-500/20 group-hover:scale-105 transition">
-            <Building2 className="w-5 h-5" />
-          </div>
-          <div>
-            <h1 className="text-base sm:text-lg font-bold tracking-tight text-slate-900 flex items-center gap-2">
-              ATI TECHNOLOGIES
-              <span className="text-[10px] bg-blue-50 text-blue-700 font-bold px-2 py-0.5 rounded-full border border-blue-200 uppercase tracking-wider">
-                Portal
-              </span>
-            </h1>
-            <p className="text-[11px] text-slate-500">Student & Internship Management Platform</p>
-          </div>
+        <Link
+          to={currentUser?.role === 'admin' ? '/admin' : currentUser?.role === 'student' ? '/student' : '/login'}
+          className="flex items-center space-x-3 group py-1"
+        >
+          <img
+            src={logo}
+            alt="Akash Technolabs"
+            className="h-10 sm:h-11 w-auto object-contain transition-transform group-hover:scale-[1.02]"
+          />
         </Link>
 
         {/* User state / Controls */}
         <div className="flex items-center space-x-4">
-          {currentUser ? (
+          {showUser ? (
             <div className="flex items-center space-x-3">
               <div className="flex items-center space-x-2 text-right">
                 <div>
@@ -51,17 +53,17 @@ export default function Navbar({ currentUser, onLogout }) {
 
               <button
                 onClick={onLogout}
-                className="flex items-center space-x-1.5 text-xs bg-slate-100 hover:bg-rose-50 hover:text-rose-700 hover:border-rose-200 text-slate-700 px-3 py-2 rounded-xl border border-slate-200 transition shadow-xs cursor-pointer"
-                title="Logout"
+                className="flex items-center gap-2 text-xs font-bold bg-white hover:bg-rose-50 text-slate-700 hover:text-rose-700 border border-slate-200 hover:border-rose-300 px-3.5 py-2 rounded-xl transition-all duration-150 shadow-2xs hover:shadow-xs cursor-pointer group active:scale-[0.98]"
+                title="Logout from portal"
               >
-                <LogOut className="w-3.5 h-3.5" />
+                <LogOut className="w-3.5 h-3.5 text-slate-500 group-hover:text-rose-600 transition-colors" />
                 <span>Logout</span>
               </button>
             </div>
           ) : (
             <button
               onClick={() => navigate('/login')}
-              className="flex items-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white text-xs sm:text-sm font-bold px-4 py-2 rounded-xl shadow-md shadow-blue-600/20 transition transform hover:-translate-y-0.5 cursor-pointer"
+              className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 active:scale-[0.98] text-white text-xs sm:text-sm font-bold px-4 py-2 rounded-xl shadow-md shadow-blue-600/20 transition transform hover:-translate-y-0.5 cursor-pointer"
             >
               <User className="w-4 h-4" />
               <span>Login / Register</span>

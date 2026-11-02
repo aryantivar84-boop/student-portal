@@ -3,9 +3,10 @@ import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { api } from '../services/api';
 import {
   User, Lock, Mail, Phone, School, GraduationCap, Code2,
-  AlertTriangle, CheckCircle2, ArrowRight, Building2, ShieldCheck,
-  AlertCircle
+  AlertTriangle, CheckCircle2, ArrowRight, ShieldCheck,
+  AlertCircle, MapPin, Camera, Upload, X, Eye, EyeOff
 } from 'lucide-react';
+import loginBg from '../assets/login_bg.jpg';
 
 export default function LoginPage({ onLoginSuccess }) {
   const navigate = useNavigate();
@@ -21,26 +22,65 @@ export default function LoginPage({ onLoginSuccess }) {
 
   // Login form state
   const [loginData, setLoginData] = useState({ username: '', password: '' });
+  const [showPassword, setShowPassword] = useState(false);
 
   // Registration form state
   const [regData, setRegData] = useState({
-    full_name: '',
+    first_name: '',
+    surname: '',
     mobile_number: '',
     email: '',
+    gender: '',
+    degree: '',
+    semester: '',
+    technology: '',
     college_name: '',
     university: '',
-    technology: '',
+    address: '',
     username: '',
     password: ''
   });
 
   const [fieldErrors, setFieldErrors] = useState({});
+  const [photoFile, setPhotoFile] = useState(null);
+  const [photoPreview, setPhotoPreview] = useState(null);
+
+  const handlePhotoChange = (e) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) {
+        setFieldErrors(prev => ({ ...prev, profile_photo: 'Photo file size must be under 5MB.' }));
+        return;
+      }
+      setPhotoFile(file);
+      const reader = new FileReader();
+      reader.onload = () => {
+        setPhotoPreview(reader.result);
+      };
+      reader.readAsDataURL(file);
+      setFieldErrors(prev => {
+        const copy = { ...prev };
+        delete copy.profile_photo;
+        return copy;
+      });
+    }
+  };
+
+  const handleRemovePhoto = () => {
+    setPhotoFile(null);
+    setPhotoPreview(null);
+  };
 
   const validateField = (field, value) => {
     const v = (value || '').trim();
     switch (field) {
-      case 'full_name':
-        if (!v) return 'Full Name is required';
+      case 'first_name':
+        if (!v) return 'First Name is required';
+        if (!/^[a-zA-Z\s]+$/.test(v)) return 'Letters only (no numbers allowed)';
+        if (v.length < 2) return 'Must be at least 2 characters';
+        return '';
+      case 'surname':
+        if (!v) return 'Surname is required';
         if (!/^[a-zA-Z\s]+$/.test(v)) return 'Letters only (no numbers allowed)';
         if (v.length < 2) return 'Must be at least 2 characters';
         return '';
@@ -52,6 +92,19 @@ export default function LoginPage({ onLoginSuccess }) {
         if (!v) return 'Email ID is required';
         if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)) return 'Enter a valid email (e.g. student@example.com)';
         return '';
+      case 'gender':
+        if (!v) return 'Please select your Gender';
+        return '';
+      case 'degree':
+        if (!v) return 'Degree is required';
+        return '';
+      case 'semester':
+        if (!v) return 'Please select Semester (1-10)';
+        return '';
+      case 'technology':
+        if (!v) return 'Technology / Domain is required';
+        if (/^\d+$/.test(v)) return 'Letters only (e.g. AI/ML, Python)';
+        return '';
       case 'college_name':
         if (!v) return 'College Name is required';
         if (/\d/.test(v)) return 'Letters only (no numbers allowed)';
@@ -60,17 +113,9 @@ export default function LoginPage({ onLoginSuccess }) {
         if (!v) return 'University is required';
         if (/\d/.test(v)) return 'Letters only (no numbers allowed)';
         return '';
-      case 'technology':
-        if (!v) return 'Technology / Domain is required';
-        if (/^\d+$/.test(v)) return 'Letters only (e.g. AI/ML, Python)';
-        return '';
-      case 'username':
-        if (!v) return 'Username is required';
-        if (v.length < 3) return 'Must be at least 3 characters';
-        return '';
-      case 'password':
-        if (!v) return 'Password is required';
-        if (v.length < 6) return 'Must be at least 6 characters';
+      case 'address':
+        if (!v) return 'Address is required';
+        if (v.length < 5) return 'Must be at least 5 characters';
         return '';
       default:
         return '';
@@ -101,6 +146,28 @@ export default function LoginPage({ onLoginSuccess }) {
     try {
       const res = await api.login(loginData);
       if (res.ok) {
+        let userObj;
+        if (res.data.role === 'admin') {
+          userObj = {
+            role: 'admin',
+            username: res.data.user.username,
+            name: 'System Administrator',
+            id: res.data.user.id
+          };
+        } else {
+          userObj = {
+            role: 'student',
+            ...res.data.profile,
+            username: res.data.profile.username,
+            name: res.data.profile.full_name
+          };
+        }
+        try {
+          localStorage.setItem('portal_user', JSON.stringify(userObj));
+          sessionStorage.setItem('portal_user', JSON.stringify(userObj));
+        } catch (storageErr) {
+          console.error('Storage write error:', storageErr);
+        }
         onLoginSuccess(res.data);
         if (res.data.role === 'admin') {
           navigate('/admin');
@@ -126,7 +193,11 @@ export default function LoginPage({ onLoginSuccess }) {
     setError('');
     setSuccessMsg('');
 
-    const regFields = ['full_name', 'mobile_number', 'email', 'college_name', 'university', 'technology', 'username', 'password'];
+    const regFields = [
+      'first_name', 'surname', 'mobile_number', 'email',
+      'gender', 'degree', 'semester', 'technology',
+      'college_name', 'university', 'address'
+    ];
     const errors = {};
     regFields.forEach(f => {
       const err = validateField(f, regData[f]);
@@ -142,22 +213,45 @@ export default function LoginPage({ onLoginSuccess }) {
     setLoading(true);
 
     try {
-      const res = await api.register(regData);
+      let payload;
+      if (photoFile) {
+        payload = new FormData();
+        Object.entries(regData).forEach(([k, v]) => {
+          if (v !== undefined && v !== null && v !== '') {
+            payload.append(k, v);
+          }
+        });
+        payload.append('full_name', `${regData.first_name.trim()} ${regData.surname.trim()}`);
+        payload.append('profile_photo', photoFile);
+      } else {
+        payload = {
+          ...regData,
+          full_name: `${regData.first_name.trim()} ${regData.surname.trim()}`
+        };
+      }
+      const res = await api.register(payload);
       if (res && res.profile) {
         setSuccessMsg(
-          'Registration submitted successfully! Your account is now pending Admin approval. You will be able to log in once verified.'
+          'Registration submitted successfully! Your account is now pending Admin approval. Once verified, you can log in using your registered Email.'
         );
         // Reset form
         setRegData({
-          full_name: '',
+          first_name: '',
+          surname: '',
           mobile_number: '',
           email: '',
+          gender: '',
+          degree: '',
+          semester: '',
+          technology: '',
           college_name: '',
           university: '',
-          technology: '',
+          address: '',
           username: '',
           password: ''
         });
+        setPhotoFile(null);
+        setPhotoPreview(null);
         setFieldErrors({});
       } else {
         const beFieldErrors = {};
@@ -189,22 +283,18 @@ export default function LoginPage({ onLoginSuccess }) {
   };
 
   return (
-    <div className="min-h-[calc(100vh-4rem)] flex items-center justify-center p-4 sm:p-6 bg-gradient-to-b from-slate-50 via-white to-blue-50/40">
-      <div className={`bg-white rounded-3xl shadow-2xl border border-slate-200 w-full transition-all duration-300 overflow-hidden my-6 ${isRegister ? 'max-w-4xl' : 'max-w-lg'}`}>
+    <div
+      className="min-h-screen flex items-center justify-center p-4 sm:p-6 bg-cover bg-center bg-no-repeat relative"
+      style={{ backgroundImage: `url(${loginBg})` }}
+    >
+      {/* Dark modern backdrop overlay for contrast */}
+      <div className="absolute inset-0 bg-slate-950/45 backdrop-blur-[2px]"></div>
+
+      <div className={`relative z-10 bg-white/95 backdrop-blur-md rounded-3xl shadow-2xl border border-white/20 w-full transition-all duration-300 overflow-hidden my-6 ${isRegister ? 'max-w-4xl' : 'max-w-lg'}`}>
         
-        {/* Top Header */}
-        <div className="bg-slate-900 px-7 py-6 text-white text-center relative overflow-hidden">
-          <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-white mx-auto mb-3 shadow-lg shadow-blue-500/25">
-            <Building2 className="w-6 h-6" />
-          </div>
-          <h2 className="text-xl sm:text-2xl font-black tracking-tight text-white">
-            {isRegister ? 'Student Registration' : 'Account Sign In'}
-          </h2>
-          <p className="text-xs text-slate-400 mt-1">
-            {isRegister
-              ? 'Complete registration. Account requires Admin verification before login.'
-              : 'Enter your credentials to access the Portal'}
-          </p>
+        {/* Brand Logo Header */}
+        <div className="pt-7 pb-5 px-6 text-center bg-white border-b border-slate-100">
+          <img src="/logo.png" alt="Akash Technolabs" className="h-9 sm:h-10 w-auto mx-auto object-contain" />
         </div>
 
         {/* Tab Toggle */}
@@ -256,32 +346,43 @@ export default function LoginPage({ onLoginSuccess }) {
           {!isRegister ? (
             <form onSubmit={handleLoginSubmit} className="space-y-4">
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">Username</label>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Email Address</label>
                 <div className="relative">
-                  <User className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
+                  <Mail className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
                   <input
                     type="text"
                     required
                     value={loginData.username}
                     onChange={(e) => setLoginData({ ...loginData, username: e.target.value })}
-                    placeholder="Enter your username"
+                    placeholder="Enter your registered email"
                     className="w-full pl-9 pr-3 py-2.5 text-xs sm:text-sm border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">Password</label>
+                <div className="flex justify-between items-center mb-1">
+                  <label className="text-xs font-bold text-slate-700">Password</label>
+                  <span className="text-[11px] text-blue-600 font-medium">(Default: your mobile number)</span>
+                </div>
                 <div className="relative">
                   <Lock className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
                   <input
-                    type="password"
+                    type={showPassword ? 'text' : 'password'}
                     required
                     value={loginData.password}
                     onChange={(e) => setLoginData({ ...loginData, password: e.target.value })}
-                    placeholder="Enter your password"
-                    className="w-full pl-9 pr-3 py-2.5 text-xs sm:text-sm border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="Enter your password (e.g. mobile number)"
+                    className="w-full pl-9 pr-10 py-2.5 text-xs sm:text-sm border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-2.5 p-1 text-slate-400 hover:text-slate-600 cursor-pointer rounded-md transition"
+                    title={showPassword ? 'Hide password' : 'Show password'}
+                  >
+                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
                 </div>
               </div>
 
@@ -313,36 +414,64 @@ export default function LoginPage({ onLoginSuccess }) {
                 <strong>Notice:</strong> As per company policy, new students must be verified and approved by the Admin before being permitted to log in.
               </div>
 
-              {/* Row 1: Full Name & Mobile Number */}
+              {/* Row 1: First Name & Surname (Name and Surname bane alag alag) */}
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">Full Name *</label>
+                <label className="block text-xs font-bold text-slate-700 mb-1">First Name *</label>
                 <div className="relative">
-                  <User className={`w-4 h-4 absolute left-3 top-2.5 ${fieldErrors.full_name ? 'text-rose-500' : 'text-slate-400'}`} />
+                  <User className={`w-4 h-4 absolute left-3 top-2.5 ${fieldErrors.first_name ? 'text-rose-500' : 'text-slate-400'}`} />
                   <input
                     type="text"
-                    value={regData.full_name}
+                    value={regData.first_name}
                     onChange={(e) => {
-                      // Letters and spaces only (strictly blocks digits and symbols)
                       const val = e.target.value.replace(/[^a-zA-Z\s]/g, '');
-                      updateField('full_name', val);
+                      updateField('first_name', val);
                     }}
-                    onBlur={() => handleBlur('full_name')}
-                    placeholder="e.g. Aryan Patel"
+                    onBlur={() => handleBlur('first_name')}
+                    placeholder="e.g. Aryan"
                     className={`w-full pl-9 pr-3 py-2 text-xs sm:text-sm border rounded-xl focus:outline-none focus:ring-2 font-medium transition ${
-                      fieldErrors.full_name
+                      fieldErrors.first_name
                         ? 'border-rose-400 bg-rose-50/20 focus:ring-rose-400 text-slate-800'
                         : 'border-slate-300 focus:ring-blue-500'
                     }`}
                   />
                 </div>
-                {fieldErrors.full_name && (
+                {fieldErrors.first_name && (
                   <p className="mt-1 text-xs text-rose-600 font-semibold flex items-center gap-1">
                     <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
-                    <span>{fieldErrors.full_name}</span>
+                    <span>{fieldErrors.first_name}</span>
                   </p>
                 )}
               </div>
 
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Surname *</label>
+                <div className="relative">
+                  <User className={`w-4 h-4 absolute left-3 top-2.5 ${fieldErrors.surname ? 'text-rose-500' : 'text-slate-400'}`} />
+                  <input
+                    type="text"
+                    value={regData.surname}
+                    onChange={(e) => {
+                      const val = e.target.value.replace(/[^a-zA-Z\s]/g, '');
+                      updateField('surname', val);
+                    }}
+                    onBlur={() => handleBlur('surname')}
+                    placeholder="e.g. Patel"
+                    className={`w-full pl-9 pr-3 py-2 text-xs sm:text-sm border rounded-xl focus:outline-none focus:ring-2 font-medium transition ${
+                      fieldErrors.surname
+                        ? 'border-rose-400 bg-rose-50/20 focus:ring-rose-400 text-slate-800'
+                        : 'border-slate-300 focus:ring-blue-500'
+                    }`}
+                  />
+                </div>
+                {fieldErrors.surname && (
+                  <p className="mt-1 text-xs text-rose-600 font-semibold flex items-center gap-1">
+                    <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
+                    <span>{fieldErrors.surname}</span>
+                  </p>
+                )}
+              </div>
+
+              {/* Row 2: Mobile Number & Email ID */}
               <div>
                 <div className="flex justify-between items-center mb-1">
                   <label className="text-xs font-bold text-slate-700">Mobile Number *</label>
@@ -356,7 +485,6 @@ export default function LoginPage({ onLoginSuccess }) {
                     maxLength={10}
                     value={regData.mobile_number}
                     onChange={(e) => {
-                      // Numbers only, strictly 10 digits max (blocks letters and symbols)
                       const val = e.target.value.replace(/\D/g, '').slice(0, 10);
                       updateField('mobile_number', val);
                     }}
@@ -377,7 +505,6 @@ export default function LoginPage({ onLoginSuccess }) {
                 )}
               </div>
 
-              {/* Row 2: Email ID & Technology / Domain */}
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1">Email ID *</label>
                 <div className="relative">
@@ -403,6 +530,101 @@ export default function LoginPage({ onLoginSuccess }) {
                 )}
               </div>
 
+              {/* Row 3: Gender & Degree */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Gender *</label>
+                <div className="relative">
+                  <select
+                    value={regData.gender}
+                    onChange={(e) => updateField('gender', e.target.value)}
+                    onBlur={() => handleBlur('gender')}
+                    className={`w-full px-3 py-2 text-xs sm:text-sm border rounded-xl focus:outline-none focus:ring-2 font-medium bg-white transition ${
+                      fieldErrors.gender
+                        ? 'border-rose-400 bg-rose-50/20 focus:ring-rose-400 text-slate-800'
+                        : 'border-slate-300 focus:ring-blue-500 text-slate-700'
+                    }`}
+                  >
+                    <option value="">Select Gender</option>
+                    <option value="Male">Male</option>
+                    <option value="Female">Female</option>
+                    <option value="Other">Other</option>
+                  </select>
+                </div>
+                {fieldErrors.gender && (
+                  <p className="mt-1 text-xs text-rose-600 font-semibold flex items-center gap-1">
+                    <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
+                    <span>{fieldErrors.gender}</span>
+                  </p>
+                )}
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Degree *</label>
+                <div className="relative">
+                  <select
+                    value={regData.degree}
+                    onChange={(e) => updateField('degree', e.target.value)}
+                    onBlur={() => handleBlur('degree')}
+                    className={`w-full px-3 py-2 text-xs sm:text-sm border rounded-xl focus:outline-none focus:ring-2 font-medium bg-white transition ${
+                      fieldErrors.degree
+                        ? 'border-rose-400 bg-rose-50/20 focus:ring-rose-400 text-slate-800'
+                        : 'border-slate-300 focus:ring-blue-500 text-slate-700'
+                    }`}
+                  >
+                    <option value="">Select Degree</option>
+                    <option value="B.Tech / B.E.">B.Tech / B.E.</option>
+                    <option value="BCA">BCA</option>
+                    <option value="MCA">MCA</option>
+                    <option value="B.Sc. (IT / CS)">B.Sc. (IT / CS)</option>
+                    <option value="M.Sc. (IT / CS)">M.Sc. (IT / CS)</option>
+                    <option value="Diploma Engineering">Diploma Engineering</option>
+                    <option value="B.Com / BBA">B.Com / BBA</option>
+                    <option value="Other Degree">Other Degree</option>
+                  </select>
+                </div>
+                {fieldErrors.degree && (
+                  <p className="mt-1 text-xs text-rose-600 font-semibold flex items-center gap-1">
+                    <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
+                    <span>{fieldErrors.degree}</span>
+                  </p>
+                )}
+              </div>
+
+              {/* Row 4: Semester (Dropdown 1-10) & Technology / Domain */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Semester (1 - 10) *</label>
+                <div className="relative">
+                  <select
+                    value={regData.semester}
+                    onChange={(e) => updateField('semester', e.target.value)}
+                    onBlur={() => handleBlur('semester')}
+                    className={`w-full px-3 py-2 text-xs sm:text-sm border rounded-xl focus:outline-none focus:ring-2 font-medium bg-white transition ${
+                      fieldErrors.semester
+                        ? 'border-rose-400 bg-rose-50/20 focus:ring-rose-400 text-slate-800'
+                        : 'border-slate-300 focus:ring-blue-500 text-slate-700'
+                    }`}
+                  >
+                    <option value="">Select Semester</option>
+                    <option value="1">Semester 1</option>
+                    <option value="2">Semester 2</option>
+                    <option value="3">Semester 3</option>
+                    <option value="4">Semester 4</option>
+                    <option value="5">Semester 5</option>
+                    <option value="6">Semester 6</option>
+                    <option value="7">Semester 7</option>
+                    <option value="8">Semester 8</option>
+                    <option value="9">Semester 9</option>
+                    <option value="10">Semester 10</option>
+                  </select>
+                </div>
+                {fieldErrors.semester && (
+                  <p className="mt-1 text-xs text-rose-600 font-semibold flex items-center gap-1">
+                    <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
+                    <span>{fieldErrors.semester}</span>
+                  </p>
+                )}
+              </div>
+
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1">Technology / Domain *</label>
                 <div className="relative">
@@ -412,7 +634,6 @@ export default function LoginPage({ onLoginSuccess }) {
                     list="login-tech-domain-options"
                     value={regData.technology}
                     onChange={(e) => {
-                      // Letters, tech marks (/+#.-) and spaces only (blocks numbers)
                       const val = e.target.value.replace(/[^a-zA-Z\s/+#.-]/g, '');
                       updateField('technology', val);
                     }}
@@ -444,7 +665,7 @@ export default function LoginPage({ onLoginSuccess }) {
                 )}
               </div>
 
-              {/* Row 3: College Name & University */}
+              {/* Row 5: College Name & University */}
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1">College Name *</label>
                 <div className="relative">
@@ -453,7 +674,6 @@ export default function LoginPage({ onLoginSuccess }) {
                     type="text"
                     value={regData.college_name}
                     onChange={(e) => {
-                      // Letters, spaces and punctuation only (blocks numbers)
                       const val = e.target.value.replace(/[^a-zA-Z\s.,&()'-]/g, '');
                       updateField('college_name', val);
                     }}
@@ -482,7 +702,6 @@ export default function LoginPage({ onLoginSuccess }) {
                     type="text"
                     value={regData.university}
                     onChange={(e) => {
-                      // Letters, spaces and punctuation only (blocks numbers)
                       const val = e.target.value.replace(/[^a-zA-Z\s.,&()'-]/g, '');
                       updateField('university', val);
                     }}
@@ -503,47 +722,70 @@ export default function LoginPage({ onLoginSuccess }) {
                 )}
               </div>
 
-              {/* Row 4: Choose Username & Password */}
+              {/* Row 6: Address & Student Photo */}
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">Choose Username *</label>
-                <input
-                  type="text"
-                  value={regData.username}
-                  onChange={(e) => updateField('username', e.target.value)}
-                  onBlur={() => handleBlur('username')}
-                  placeholder="username"
-                  className={`w-full px-3 py-2 text-xs sm:text-sm border rounded-xl focus:outline-none focus:ring-2 transition ${
-                    fieldErrors.username
-                      ? 'border-rose-400 bg-rose-50/20 focus:ring-rose-400 text-slate-800'
-                      : 'border-slate-300 focus:ring-blue-500'
-                  }`}
-                />
-                {fieldErrors.username && (
+                <label className="block text-xs font-bold text-slate-700 mb-1">Address *</label>
+                <div className="relative">
+                  <MapPin className={`w-4 h-4 absolute left-3 top-2.5 ${fieldErrors.address ? 'text-rose-500' : 'text-slate-400'}`} />
+                  <input
+                    type="text"
+                    value={regData.address}
+                    onChange={(e) => updateField('address', e.target.value)}
+                    onBlur={() => handleBlur('address')}
+                    placeholder="e.g. 101 Shivalik Heights, SG Highway, Ahmedabad"
+                    className={`w-full pl-9 pr-3 py-2 text-xs sm:text-sm border rounded-xl focus:outline-none focus:ring-2 font-medium transition ${
+                      fieldErrors.address
+                        ? 'border-rose-400 bg-rose-50/20 focus:ring-rose-400 text-slate-800'
+                        : 'border-slate-300 focus:ring-blue-500'
+                    }`}
+                  />
+                </div>
+                {fieldErrors.address && (
                   <p className="mt-1 text-xs text-rose-600 font-semibold flex items-center gap-1">
                     <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
-                    <span>{fieldErrors.username}</span>
+                    <span>{fieldErrors.address}</span>
                   </p>
                 )}
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">Password *</label>
-                <input
-                  type="password"
-                  value={regData.password}
-                  onChange={(e) => updateField('password', e.target.value)}
-                  onBlur={() => handleBlur('password')}
-                  placeholder="Min 6 chars"
-                  className={`w-full px-3 py-2 text-xs sm:text-sm border rounded-xl focus:outline-none focus:ring-2 transition ${
-                    fieldErrors.password
-                      ? 'border-rose-400 bg-rose-50/20 focus:ring-rose-400 text-slate-800'
-                      : 'border-slate-300 focus:ring-blue-500'
-                  }`}
-                />
-                {fieldErrors.password && (
+                <div className="flex justify-between items-center mb-1">
+                  <label className="text-xs font-bold text-slate-700">Student Photo <span className="text-slate-400 font-normal">(Optional)</span></label>
+                  {photoPreview && (
+                    <button
+                      type="button"
+                      onClick={handleRemovePhoto}
+                      className="text-[11px] text-rose-600 hover:text-rose-700 font-semibold flex items-center gap-0.5 cursor-pointer"
+                    >
+                      <X className="w-3 h-3" /> Remove
+                    </button>
+                  )}
+                </div>
+                <div className="flex items-center gap-2.5">
+                  {photoPreview ? (
+                    <div className="relative w-9 h-9 flex-shrink-0 rounded-lg overflow-hidden border-2 border-blue-500 shadow-xs">
+                      <img src={photoPreview} alt="Student Preview" className="w-full h-full object-cover" />
+                    </div>
+                  ) : (
+                    <div className="w-9 h-9 rounded-lg bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-400 flex-shrink-0">
+                      <Camera className="w-4 h-4" />
+                    </div>
+                  )}
+                  <label className="flex-1 cursor-pointer flex items-center justify-center gap-2 px-3 py-2 text-xs font-semibold text-blue-700 bg-blue-50/70 hover:bg-blue-100/80 border border-dashed border-blue-300 rounded-xl transition">
+                    <Upload className="w-3.5 h-3.5 text-blue-600 flex-shrink-0" />
+                    <span className="truncate">{photoPreview ? 'Change Photo' : 'Upload Student Photo'}</span>
+                    <input
+                      type="file"
+                      accept="image/png, image/jpeg, image/jpg, image/webp"
+                      onChange={handlePhotoChange}
+                      className="hidden"
+                    />
+                  </label>
+                </div>
+                {fieldErrors.profile_photo && (
                   <p className="mt-1 text-xs text-rose-600 font-semibold flex items-center gap-1">
                     <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
-                    <span>{fieldErrors.password}</span>
+                    <span>{fieldErrors.profile_photo}</span>
                   </p>
                 )}
               </div>
@@ -553,7 +795,7 @@ export default function LoginPage({ onLoginSuccess }) {
                 <button
                   type="submit"
                   disabled={loading}
-                  className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 rounded-xl shadow-md transition text-xs sm:text-sm flex items-center justify-center gap-2"
+                  className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl shadow-md shadow-blue-500/20 transition text-xs sm:text-sm flex items-center justify-center gap-2"
                 >
                   {loading ? 'Submitting Registration...' : 'Submit Registration for Approval'}
                 </button>

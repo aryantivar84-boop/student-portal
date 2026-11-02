@@ -3,14 +3,15 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { api } from '../services/api';
 import {
   LayoutDashboard, Users, Clock, FileText, BookOpen, Award,
-  CheckCircle2, XCircle, Search, Filter, Download, Plus, Check,
+  CheckCircle2, XCircle, Search, Filter, Download, Plus, Check, CheckCheck,
   ChevronRight, AlertCircle, ArrowUpRight, GraduationCap, Building2,
   Calendar, UserCheck, ShieldAlert, Sparkles, RefreshCw, Eye, Edit, X,
   Bell, Send, Megaphone, Trash2, User, Mail, Phone, School, Code2, AlertTriangle,
-  UploadCloud, Paperclip, ArrowLeft,
+  UploadCloud, Paperclip, ArrowLeft, MapPin,
   AlignLeft, AlignCenter, AlignRight
 } from 'lucide-react';
 import WordRibbonEditor from './WordRibbonEditor';
+import { getFestivalDetails } from '../utils/festivals';
 
 export default function AdminPortal() {
   const navigate = useNavigate();
@@ -23,6 +24,7 @@ export default function AdminPortal() {
   const [selectedTech, setSelectedTech] = useState('');
   const [filterApproval, setFilterApproval] = useState('all'); // 'all', 'pending', 'approved'
   const [loadingStudents, setLoadingStudents] = useState(false);
+  const [bulkVerifying, setBulkVerifying] = useState(false);
 
   // Attendance & Reports Monitor (Filtered by Month & Student)
   const [attendanceRecords, setAttendanceRecords] = useState([]);
@@ -281,6 +283,10 @@ export default function AdminPortal() {
     college_name: '',
     university: '',
     technology: '',
+    gender: '',
+    degree: '',
+    semester: '',
+    address: '',
     is_approved: false
   });
   const [adminProfileErrors, setAdminProfileErrors] = useState({});
@@ -289,12 +295,18 @@ export default function AdminPortal() {
   // Admin Add Student Modal State (same validations as registration)
   const [showAddStudentModal, setShowAddStudentModal] = useState(false);
   const [newStudentData, setNewStudentData] = useState({
+    first_name: '',
+    surname: '',
     full_name: '',
     mobile_number: '',
     email: '',
     college_name: '',
     university: '',
     technology: '',
+    gender: '',
+    degree: '',
+    semester: '',
+    address: '',
     username: '',
     password: ''
   });
@@ -358,6 +370,10 @@ export default function AdminPortal() {
       college_name: s.college_name || '',
       university: s.university || '',
       technology: s.technology || '',
+      gender: s.gender || '',
+      degree: s.degree || '',
+      semester: s.semester || '',
+      address: s.address || '',
       is_approved: Boolean(s.is_approved)
     });
     setAdminProfileErrors({});
@@ -417,12 +433,18 @@ export default function AdminPortal() {
 
   const handleOpenAddStudent = () => {
     setNewStudentData({
+      first_name: '',
+      surname: '',
       full_name: '',
       mobile_number: '',
       email: '',
       college_name: '',
       university: '',
       technology: '',
+      gender: '',
+      degree: '',
+      semester: '',
+      address: '',
       username: '',
       password: ''
     });
@@ -1124,6 +1146,30 @@ We are pleased to welcome ${obj} to ${comp} and wish ${obj} a successful and enr
   const pendingCount = students.filter((s) => !s.is_approved).length;
   const approvedCount = students.filter((s) => s.is_approved).length;
 
+  const handleVerifyAllStudents = async (action = 'approve') => {
+    const isApprove = action === 'approve';
+    const count = isApprove ? pendingCount : approvedCount;
+    if (count === 0 && isApprove) {
+      showStatus('All student registrations are already approved!');
+      return;
+    }
+    const confirmMsg = isApprove
+      ? `Are you sure you want to approve ALL ${count} pending student registration(s)? They will immediately gain login access.`
+      : 'Are you sure you want to revoke approvals for all students?';
+    if (!window.confirm(confirmMsg)) return;
+
+    setBulkVerifying(true);
+    try {
+      const res = await api.verifyAllStudents(action);
+      showStatus(`✓ ${res.message || (isApprove ? 'All pending students approved!' : 'Action completed.')}`);
+      loadStudents();
+    } catch (err) {
+      alert('Bulk verification action failed. Please try again.');
+    } finally {
+      setBulkVerifying(false);
+    }
+  };
+
   // Filtered Students List
   const filteredStudents = students.filter((s) => {
     const matchesSearch =
@@ -1143,8 +1189,8 @@ We are pleased to welcome ${obj} to ${comp} and wish ${obj} a successful and enr
 
   const navItems = [
     { id: 'overview', label: 'Dashboard Overview', icon: LayoutDashboard },
-    { id: 'approvals', label: 'Student Approvals', icon: Users, badge: pendingCount > 0 ? pendingCount : null, badgeColor: 'bg-amber-500' },
-    { id: 'news', label: 'News & Broadcast', icon: Bell, badge: newsList.length > 0 ? newsList.length : null, badgeColor: 'bg-indigo-600' },
+    { id: 'approvals', label: 'Student Approvals', icon: UserCheck, badge: pendingCount > 0 ? pendingCount : null, badgeColor: 'bg-amber-100 text-amber-800 border border-amber-200' },
+    { id: 'news', label: 'News & Broadcast', icon: Bell, badge: newsList.length > 0 ? newsList.length : null, badgeColor: 'bg-indigo-100 text-indigo-800 border border-indigo-200' },
     { id: 'attendance', label: 'Attendance & Reports', icon: Clock },
     { id: 'documents', label: 'Document Releases (PDF)', icon: FileText },
     { id: 'notes', label: 'Subjects & Notes', icon: BookOpen },
@@ -2208,18 +2254,18 @@ We are pleased to welcome ${obj} to ${comp} and wish ${obj} a successful and enr
       {/* ======================================================== */}
       {/* MODERN LEFT SIDEBAR NAVIGATION */}
       {/* ======================================================== */}
-      <aside className="w-full md:w-64 bg-slate-900 border-r border-slate-800 flex-shrink-0 flex flex-col justify-between">
+      <aside className="w-full md:w-64 bg-white border-r border-slate-200 flex-shrink-0 flex flex-col justify-between shadow-xs">
         <div className="p-4 space-y-6">
           
           {/* Admin Tag */}
-          <div className="px-3 py-3 rounded-xl bg-slate-800/80 border border-slate-700/60 flex items-center gap-3">
-            <div className="w-9 h-9 rounded-lg bg-blue-600 flex items-center justify-center text-white font-bold shadow">
+          <div className="px-3.5 py-3 rounded-2xl bg-slate-50 border border-slate-200/80 flex items-center gap-3 shadow-xs">
+            <div className="w-9 h-9 rounded-xl bg-blue-600 flex items-center justify-center text-white font-bold shadow-sm shadow-blue-500/25">
               A
             </div>
             <div>
-              <div className="text-xs font-semibold text-white">Admin Console</div>
-              <div className="text-[11px] text-emerald-400 font-medium flex items-center gap-1">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+              <div className="text-xs font-bold text-slate-800">Admin Console</div>
+              <div className="text-[11px] text-emerald-600 font-semibold flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
                 System Online
               </div>
             </div>
@@ -2239,16 +2285,16 @@ We are pleased to welcome ${obj} to ${comp} and wish ${obj} a successful and enr
                   onClick={() => setActiveTab(item.id)}
                   className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold transition ${
                     isActive
-                      ? 'bg-blue-600 text-white shadow-md'
-                      : 'text-slate-300 hover:bg-slate-800 hover:text-white'
+                      ? 'bg-blue-600 text-white shadow-md shadow-blue-500/20'
+                      : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
                   }`}
                 >
                   <div className="flex items-center gap-3">
-                    <Icon className={`w-4 h-4 ${isActive ? 'text-white' : 'text-slate-400'}`} />
+                    <Icon className={`w-4 h-4 ${isActive ? 'text-white' : 'text-slate-400 group-hover:text-slate-600'}`} />
                     <span>{item.label}</span>
                   </div>
                   {item.badge && (
-                    <span className={`${item.badgeColor || 'bg-blue-500'} text-white text-[10px] font-bold px-2 py-0.5 rounded-full`}>
+                    <span className={`${isActive ? 'bg-white/20 text-white' : item.badgeColor || 'bg-blue-100 text-blue-700'} text-[10px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap`}>
                       {item.badge}
                     </span>
                   )}
@@ -2260,18 +2306,18 @@ We are pleased to welcome ${obj} to ${comp} and wish ${obj} a successful and enr
         </div>
 
         {/* Sidebar Footer Stats */}
-        <div className="p-4 border-t border-slate-800 text-xs text-slate-400 space-y-2">
-          <div className="flex justify-between">
-            <span>Total Students:</span>
-            <span className="font-bold text-white">{students.length}</span>
+        <div className="p-4 border-t border-slate-200 bg-slate-50/60 text-xs text-slate-500 space-y-2">
+          <div className="flex justify-between items-center">
+            <span className="font-medium">Total Students:</span>
+            <span className="font-bold text-slate-800">{students.length}</span>
           </div>
-          <div className="flex justify-between">
-            <span>Pending Approvals:</span>
-            <span className="font-bold text-amber-400">{pendingCount}</span>
+          <div className="flex justify-between items-center">
+            <span className="font-medium">Pending Approvals:</span>
+            <span className="font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200 text-[11px]">{pendingCount}</span>
           </div>
-          <div className="flex justify-between">
-            <span>Active Subjects:</span>
-            <span className="font-bold text-blue-400">{subjects.length}</span>
+          <div className="flex justify-between items-center">
+            <span className="font-medium">Active Subjects:</span>
+            <span className="font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded-md border border-blue-200 text-[11px]">{subjects.length}</span>
           </div>
         </div>
       </aside>
@@ -2402,18 +2448,32 @@ We are pleased to welcome ${obj} to ${comp} and wish ${obj} a successful and enr
 
             {/* Quick Actions & Recent Pending Table */}
             <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm space-y-4">
-              <div className="flex justify-between items-center pb-3 border-b border-slate-100">
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center pb-3 border-b border-slate-100 gap-2">
                 <div>
                   <h3 className="text-base font-bold text-slate-900">Recent Registrations Requiring Verification</h3>
                   <p className="text-xs text-slate-500">Students waiting for your approval to gain login access.</p>
                 </div>
-                <button
-                  onClick={() => setActiveTab('approvals')}
-                  className="text-xs text-blue-600 hover:text-blue-800 font-bold flex items-center gap-1"
-                >
-                  <span>View All Students</span>
-                  <ChevronRight className="w-4 h-4" />
-                </button>
+                <div className="flex items-center gap-2">
+                  {pendingCount > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => handleVerifyAllStudents('approve')}
+                      disabled={bulkVerifying}
+                      className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg text-xs flex items-center gap-1.5 transition shadow-xs cursor-pointer disabled:opacity-50"
+                      title="Approve all pending student registrations in one click"
+                    >
+                      <CheckCheck className="w-3.5 h-3.5 text-white" />
+                      <span>{bulkVerifying ? 'Approving...' : `Approve All (${pendingCount})`}</span>
+                    </button>
+                  )}
+                  <button
+                    onClick={() => setActiveTab('approvals')}
+                    className="text-xs text-blue-600 hover:text-blue-800 font-bold flex items-center gap-1"
+                  >
+                    <span>View All Students</span>
+                    <ChevronRight className="w-4 h-4" />
+                  </button>
+                </div>
               </div>
 
               {pendingCount === 0 ? (
@@ -2435,7 +2495,29 @@ We are pleased to welcome ${obj} to ${comp} and wish ${obj} a successful and enr
                     <tbody className="divide-y divide-slate-100 text-slate-700">
                       {students.filter((s) => !s.is_approved).map((s) => (
                         <tr key={s.id} className="hover:bg-slate-50">
-                          <td className="py-3 font-bold text-slate-900">{s.full_name}</td>
+                          <td className="py-3 font-bold text-slate-900">
+                            <div className="flex items-center gap-2.5">
+                              {s.profile_photo_url || s.profile_photo ? (
+                                <img
+                                  src={api.getMediaUrl(s.profile_photo_url || s.profile_photo)}
+                                  alt={s.full_name}
+                                  onError={(e) => {
+                                    e.currentTarget.style.display = 'none';
+                                    const sibling = e.currentTarget.nextElementSibling;
+                                    if (sibling) sibling.style.display = 'flex';
+                                  }}
+                                  className="w-8 h-8 rounded-full object-cover border border-slate-200"
+                                />
+                              ) : null}
+                              <div
+                                className="w-8 h-8 rounded-full bg-blue-100 text-blue-700 items-center justify-center font-bold text-xs flex-shrink-0"
+                                style={{ display: s.profile_photo_url || s.profile_photo ? 'none' : 'flex' }}
+                              >
+                                {s.full_name?.charAt(0) || 'S'}
+                              </div>
+                              <span>{s.full_name}</span>
+                            </div>
+                          </td>
                           <td className="py-3">
                             <div>{s.email}</div>
                             <div className="text-slate-400">{s.mobile_number}</div>
@@ -2458,9 +2540,11 @@ We are pleased to welcome ${obj} to ${comp} and wish ${obj} a successful and enr
                             </button>
                             <button
                               onClick={() => handleVerifyStudent(s.id, 'approve')}
-                              className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold px-3 py-1.5 rounded-lg text-xs shadow-sm transition"
+                              className="inline-flex items-center gap-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-3 py-1.5 rounded-lg text-xs shadow-sm transition cursor-pointer"
+                              title="Approve Student Access"
                             >
-                              Approve
+                              <UserCheck className="w-3.5 h-3.5" />
+                              <span>Approve</span>
                             </button>
                           </td>
                         </tr>
@@ -2475,16 +2559,21 @@ We are pleased to welcome ${obj} to ${comp} and wish ${obj} a successful and enr
         )}
 
         {/* ======================================================== */}
-        {/* 2. STUDENT APPROVALS & DIRECTORY (VOICE NOTE 1) */}
+        {/* 2. STUDENT APPROVALS & DIRECTORY */}
         {/* ======================================================== */}
         {activeTab === 'approvals' && (
           <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 space-y-4">
             
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center pb-4 border-b border-slate-100 gap-3">
               <div>
-                <h3 className="text-lg font-bold text-slate-900">Student Verification Directory</h3>
-                <p className="text-xs text-slate-500 mt-0.5">
-                  Voice Note 1: Students register and must be verified by Admin before logging in.
+                <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center flex-shrink-0">
+                    <UserCheck className="w-4 h-4" />
+                  </div>
+                  <span>Student Verification Directory</span>
+                </h3>
+                <p className="text-xs text-slate-500 mt-1">
+                  Students register and must be verified by Admin before logging in.
                 </p>
               </div>
 
@@ -2493,11 +2582,29 @@ We are pleased to welcome ${obj} to ${comp} and wish ${obj} a successful and enr
                 <button
                   type="button"
                   onClick={handleOpenAddStudent}
-                  className="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg text-xs flex items-center gap-1.5 transition shadow-xs"
+                  className="px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl text-xs flex items-center gap-1.5 transition-all duration-150 shadow-sm hover:shadow cursor-pointer active:scale-[0.98]"
                 >
                   <Plus className="w-3.5 h-3.5" />
                   <span>Add Student</span>
                 </button>
+
+                {pendingCount > 0 ? (
+                  <button
+                    type="button"
+                    onClick={() => handleVerifyAllStudents('approve')}
+                    disabled={bulkVerifying}
+                    className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-bold rounded-xl text-xs flex items-center gap-1.5 transition-all duration-150 shadow-sm hover:shadow cursor-pointer disabled:opacity-50 active:scale-[0.98]"
+                    title="Approve all pending student registrations in one click"
+                  >
+                    <CheckCheck className="w-3.5 h-3.5 text-white" />
+                    <span>{bulkVerifying ? 'Approving All...' : `Approve All (${pendingCount})`}</span>
+                  </button>
+                ) : (
+                  <span className="px-3.5 py-2 bg-emerald-50 text-emerald-700 border border-emerald-200 font-bold rounded-xl text-xs flex items-center gap-1.5 shadow-2xs">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                    <span>All Approved</span>
+                  </span>
+                )}
 
                 <div className="relative flex-1 md:w-56">
                   <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
@@ -2545,8 +2652,39 @@ We are pleased to welcome ${obj} to ${comp} and wish ${obj} a successful and enr
                     filteredStudents.map((s) => (
                       <tr key={s.id} className="hover:bg-slate-50 transition">
                         <td className="px-4 py-3">
-                          <div className="font-bold text-slate-900">{s.full_name}</div>
-                          <div className="text-[11px] text-slate-500 font-mono">@{s.username}</div>
+                          <div className="flex items-center gap-2.5">
+                            {s.profile_photo_url || s.profile_photo ? (
+                              <img
+                                src={api.getMediaUrl(s.profile_photo_url || s.profile_photo)}
+                                alt={s.full_name}
+                                onError={(e) => {
+                                  e.currentTarget.style.display = 'none';
+                                  const sibling = e.currentTarget.nextElementSibling;
+                                  if (sibling) sibling.style.display = 'flex';
+                                }}
+                                className="w-9 h-9 rounded-xl object-cover border border-slate-200 shadow-xs flex-shrink-0"
+                              />
+                            ) : null}
+                            <div
+                              className="w-9 h-9 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 text-white font-bold text-xs flex-shrink-0 items-center justify-center shadow-xs"
+                              style={{ display: s.profile_photo_url || s.profile_photo ? 'none' : 'flex' }}
+                            >
+                              {s.full_name?.charAt(0) || 'S'}
+                            </div>
+                            <div>
+                              <div className="font-bold text-slate-900">{s.full_name}</div>
+                              <div className="text-[11px] text-slate-500 font-mono">@{s.username}</div>
+                            </div>
+                          </div>
+                          {(s.gender || s.degree || s.semester) && (
+                            <div className="text-[10px] text-indigo-600 font-semibold mt-0.5 flex flex-wrap gap-1">
+                              {[s.degree, s.semester ? `Sem ${s.semester}` : null, s.gender].filter(Boolean).map((tag, idx) => (
+                                <span key={idx} className="bg-indigo-50 text-indigo-700 px-1.5 py-0.2 rounded text-[10px] border border-indigo-100 font-medium">
+                                  {tag}
+                                </span>
+                              ))}
+                            </div>
+                          )}
                         </td>
                         <td className="px-4 py-3">
                           <div>{s.email}</div>
@@ -2555,6 +2693,12 @@ We are pleased to welcome ${obj} to ${comp} and wish ${obj} a successful and enr
                         <td className="px-4 py-3">
                           <div className="font-medium text-slate-900">{s.college_name}</div>
                           <div className="text-slate-500">{s.university}</div>
+                          {s.address && (
+                            <div className="text-[10px] text-slate-500 truncate max-w-xs flex items-center gap-1 mt-0.5" title={s.address}>
+                              <MapPin className="w-2.5 h-2.5 text-rose-500 inline flex-shrink-0" />
+                              <span className="truncate">{s.address}</span>
+                            </div>
+                          )}
                         </td>
                         <td className="px-4 py-3 font-semibold text-blue-700">
                           {s.technology}
@@ -2594,16 +2738,20 @@ We are pleased to welcome ${obj} to ${comp} and wish ${obj} a successful and enr
                           {!s.is_approved ? (
                             <button
                               onClick={() => handleVerifyStudent(s.id, 'approve')}
-                              className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold px-3 py-1.5 rounded-lg shadow-sm text-xs transition"
+                              className="inline-flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-3 py-1.5 rounded-lg shadow-sm text-xs transition cursor-pointer"
+                              title="Approve student registration and grant login access"
                             >
-                              Approve Access
+                              <UserCheck className="w-3.5 h-3.5 text-white" />
+                              <span>Approve Access</span>
                             </button>
                           ) : (
                             <button
                               onClick={() => handleVerifyStudent(s.id, 'reject')}
-                              className="bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-semibold px-2.5 py-1.5 rounded-lg text-xs transition"
+                              className="inline-flex items-center gap-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-semibold px-2.5 py-1.5 rounded-lg text-xs transition cursor-pointer"
+                              title="Revoke student approval and block login access"
                             >
-                              Revoke
+                              <XCircle className="w-3.5 h-3.5 text-rose-600" />
+                              <span>Revoke</span>
                             </button>
                           )}
                         </td>
@@ -2624,21 +2772,21 @@ We are pleased to welcome ${obj} to ${comp} and wish ${obj} a successful and enr
           <div className="space-y-6">
             
             {/* Header Banner */}
-            <div className="bg-gradient-to-r from-indigo-900 via-purple-900 to-slate-900 rounded-3xl p-6 text-white shadow-md flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+            <div className="bg-gradient-to-r from-indigo-50 via-purple-50/60 to-slate-50 rounded-3xl p-6 border border-indigo-200/80 shadow-xs flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
               <div>
                 <div className="flex items-center gap-2">
-                  <span className="text-xs bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 px-2.5 py-0.5 rounded-full font-semibold flex items-center gap-1">
-                    <Megaphone className="w-3.5 h-3.5" />
+                  <span className="text-xs bg-indigo-100 text-indigo-800 border border-indigo-200 px-2.5 py-0.5 rounded-full font-bold flex items-center gap-1">
+                    <Megaphone className="w-3.5 h-3.5 text-indigo-700" />
                     <span>Real-Time Broadcast Engine</span>
                   </span>
-                  <span className="text-xs bg-white/10 text-white/80 px-2.5 py-0.5 rounded-full">
+                  <span className="text-xs text-indigo-700 font-semibold bg-indigo-100/70 border border-indigo-200 px-2.5 py-0.5 rounded-full">
                     {newsList.length} Announcements Posted
                   </span>
                 </div>
-                <h2 className="text-xl sm:text-2xl font-black mt-2 tracking-tight">
+                <h2 className="text-xl sm:text-2xl font-black text-slate-800 mt-2.5 tracking-tight">
                   News & Student Notification Board
                 </h2>
-                <p className="text-xs text-indigo-200/80 mt-1 max-w-xl">
+                <p className="text-xs sm:text-sm text-slate-600 font-medium mt-1 max-w-xl">
                   Broadcast notices, submission deadlines, exam updates, or holiday notices. Every student receives an instant notification badge on their profile and can view the news feed in real-time.
                 </p>
               </div>
@@ -2646,9 +2794,10 @@ We are pleased to welcome ${obj} to ${comp} and wish ${obj} a successful and enr
               <button
                 onClick={loadNews}
                 disabled={loadingNews}
-                className="bg-white/10 hover:bg-white/20 text-white border border-white/20 font-semibold px-4 py-2 rounded-xl text-xs flex items-center gap-2 transition"
+                className="bg-white hover:bg-indigo-50 text-slate-700 hover:text-indigo-600 border border-slate-200 hover:border-indigo-300 shadow-2xs hover:shadow-xs font-bold px-3.5 py-2 rounded-xl text-xs flex items-center gap-2 transition-all duration-150 cursor-pointer active:scale-[0.98] disabled:opacity-50"
+                title="Refresh news announcements feed"
               >
-                <RefreshCw className={`w-3.5 h-3.5 ${loadingNews ? 'animate-spin' : ''}`} />
+                <RefreshCw className={`w-3.5 h-3.5 text-indigo-600 ${loadingNews ? 'animate-spin' : ''}`} />
                 <span>Refresh News</span>
               </button>
             </div>
@@ -2902,10 +3051,10 @@ We are pleased to welcome ${obj} to ${comp} and wish ${obj} a successful and enr
                   <button
                     onClick={loadAttendanceAndReports}
                     disabled={loadingAttendance}
-                    className="px-3.5 py-2 text-xs font-semibold text-slate-700 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-xl flex items-center gap-1.5 transition shadow-xs"
+                    className="px-3.5 py-2 text-xs font-bold text-slate-700 hover:text-blue-600 bg-white hover:bg-blue-50 border border-slate-200 hover:border-blue-300 rounded-xl flex items-center gap-2 transition-all duration-150 shadow-2xs hover:shadow-xs cursor-pointer active:scale-[0.98] disabled:opacity-50"
                     title="Refresh attendance records"
                   >
-                    <RefreshCw className={`w-3.5 h-3.5 ${loadingAttendance ? 'animate-spin text-blue-600' : 'text-slate-500'}`} />
+                    <RefreshCw className={`w-3.5 h-3.5 text-blue-600 ${loadingAttendance ? 'animate-spin' : ''}`} />
                     <span>Refresh</span>
                   </button>
                 </div>
@@ -3023,7 +3172,7 @@ We are pleased to welcome ${obj} to ${comp} and wish ${obj} a successful and enr
               </div>
             </div>
 
-            {/* Monthly KPI Overview Stat Cards (Voice Note & Requirement) */}
+            {/* Monthly KPI Overview Stat Cards */}
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-3.5">
               
               {/* 1. Working Days */}
@@ -3338,72 +3487,86 @@ We are pleased to welcome ${obj} to ${comp} and wish ${obj} a successful and enr
                             const isToday = d.date === new Date().toISOString().split('T')[0];
 
                             return (
-                              <div
-                                key={d.date}
-                                className={`p-2.5 rounded-xl border text-center transition flex flex-col justify-between min-h-[74px] ${
-                                  isPresent
-                                    ? 'bg-emerald-50/80 border-emerald-300 text-emerald-950 shadow-xs'
-                                    : isHoliday
-                                    ? 'bg-amber-50/90 border-amber-300 text-amber-950 shadow-xs ring-1 ring-amber-200'
-                                    : isAbsent
-                                    ? 'bg-rose-50/80 border-rose-300 text-rose-950 shadow-xs'
-                                    : isWeekend
-                                    ? 'bg-slate-50 border-slate-200 text-slate-400'
-                                    : 'bg-white border-slate-200 text-slate-400'
-                                } ${isToday ? 'ring-2 ring-blue-500 ring-offset-1' : ''}`}
-                                title={d.is_holiday ? `${d.holiday_name} (Festival Day Off)` : undefined}
-                              >
-                                <div className="flex justify-between items-center text-[10px] font-bold">
-                                  <span>{d.day_name.slice(0, 3)}</span>
-                                  <span className="font-extrabold text-xs">{d.day_of_month}</span>
-                                </div>
+                                <div
+                                  key={d.date}
+                                  className={`p-2 rounded-xl border text-center transition flex flex-col justify-between min-h-[86px] ${
+                                    isPresent
+                                      ? 'bg-emerald-50/80 border-emerald-300 text-emerald-950 shadow-xs'
+                                      : isHoliday
+                                      ? 'bg-gradient-to-b from-amber-50 to-orange-50/70 border-amber-300 text-amber-950 shadow-xs ring-1 ring-amber-200'
+                                      : isAbsent
+                                      ? 'bg-rose-50/80 border-rose-300 text-rose-950 shadow-xs'
+                                      : isWeekend
+                                      ? 'bg-slate-50 border-slate-200 text-slate-400'
+                                      : 'bg-white border-slate-200 text-slate-400'
+                                  } ${isToday ? 'ring-2 ring-blue-500 ring-offset-1' : ''}`}
+                                  title={d.is_holiday ? `${d.holiday_name} (Festival Day Off)` : undefined}
+                                >
+                                  <div className="flex justify-between items-center text-[10px] font-bold">
+                                    <span>{d.day_name.slice(0, 3)}</span>
+                                    <span className={`font-extrabold text-xs ${isToday ? 'text-blue-700' : ''}`}>{d.day_of_month}</span>
+                                  </div>
 
-                                <div className="my-1">
-                                  {isPresent ? (
-                                    <div>
-                                      <span className="text-[10px] font-black text-emerald-700 bg-emerald-100 border border-emerald-200 px-1.5 py-0.5 rounded block truncate">
-                                        🟢 {d.duration}
-                                      </span>
-                                      {d.is_holiday && (
-                                        <span className="text-[8px] font-bold text-amber-700 bg-amber-100 rounded px-1 mt-0.5 block truncate">
-                                          🪔 {d.holiday_name}
+                                  <div className="my-1">
+                                    {isPresent ? (
+                                      <div>
+                                        <span className="text-[10px] font-black text-emerald-700 bg-emerald-100 border border-emerald-200 px-1.5 py-0.5 rounded block truncate">
+                                          🟢 {d.duration}
                                         </span>
-                                      )}
-                                    </div>
-                                  ) : isHoliday ? (
-                                    <div>
-                                      <span className="text-[9px] font-black text-amber-900 bg-amber-100 border border-amber-300 px-1 py-0.5 rounded block truncate" title={d.holiday_name}>
-                                        🪔 {d.holiday_name || 'Festival'}
+                                        {d.is_holiday && (
+                                          <div className="flex items-center justify-center gap-1 mt-1 bg-amber-100 border border-amber-300 rounded px-1 py-0.5">
+                                            <img
+                                              src={getFestivalDetails(d.holiday_name).image}
+                                              alt={d.holiday_name}
+                                              className="w-3.5 h-3.5 rounded-full object-contain"
+                                            />
+                                            <span className="text-[8px] font-black text-amber-800 truncate">
+                                              {getFestivalDetails(d.holiday_name).shortTitle}
+                                            </span>
+                                          </div>
+                                        )}
+                                      </div>
+                                    ) : isHoliday ? (
+                                      <div className="flex flex-col items-center justify-center my-0.5" title={d.holiday_name}>
+                                        <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-white p-0.5 border-2 border-amber-300 shadow-xs flex items-center justify-center overflow-hidden hover:scale-110 transition">
+                                          <img
+                                            src={getFestivalDetails(d.holiday_name).image}
+                                            alt={d.holiday_name}
+                                            className="w-full h-full object-contain"
+                                          />
+                                        </div>
+                                        <span className="text-[8.5px] font-black text-amber-950 mt-1 block truncate max-w-full px-0.5 leading-tight" title={d.holiday_name}>
+                                          {getFestivalDetails(d.holiday_name).shortTitle}
+                                        </span>
+                                        <span className="text-[7.5px] font-extrabold text-amber-700 uppercase tracking-tight">
+                                          Day Off
+                                        </span>
+                                      </div>
+                                    ) : isAbsent ? (
+                                      <span className="text-[10px] font-black text-rose-700 bg-rose-100 border border-rose-200 px-1.5 py-0.5 rounded block truncate">
+                                        🔴 Absent
                                       </span>
-                                      <span className="text-[9px] font-black text-amber-700 uppercase tracking-tight block mt-0.5">
-                                        Day Off
+                                    ) : isWeekend ? (
+                                      <span className="text-[9px] font-semibold text-slate-400 block truncate">
+                                        Off
                                       </span>
-                                    </div>
-                                  ) : isAbsent ? (
-                                    <span className="text-[10px] font-black text-rose-700 bg-rose-100 border border-rose-200 px-1.5 py-0.5 rounded block truncate">
-                                      🔴 Absent
-                                    </span>
-                                  ) : isWeekend ? (
-                                    <span className="text-[9px] font-semibold text-slate-400 block truncate">
-                                      Off
-                                    </span>
-                                  ) : (
-                                    <span className="text-[9px] text-slate-300 block truncate">
-                                      --
-                                    </span>
-                                  )}
-                                </div>
+                                    ) : (
+                                      <span className="text-[9px] text-slate-300 block truncate">
+                                        --
+                                      </span>
+                                    )}
+                                  </div>
 
-                                {isToday ? (
-                                  <span className="text-[9px] font-black text-blue-600 uppercase tracking-tighter">
-                                    Today
-                                  </span>
-                                ) : isHoliday ? (
-                                  <span className="text-[8px] font-bold text-amber-600 uppercase tracking-tighter">
-                                    Office Off
-                                  </span>
-                                ) : null}
-                              </div>
+                                  {isToday ? (
+                                    <span className="text-[9px] font-black text-blue-600 uppercase tracking-tighter">
+                                      Today
+                                    </span>
+                                  ) : isHoliday ? (
+                                    <span className="text-[8px] font-extrabold text-amber-700 uppercase tracking-tighter">
+                                      Office Closed
+                                    </span>
+                                  ) : null}
+                                </div>
                             );
                           })}
                       </div>
@@ -3477,8 +3640,13 @@ We are pleased to welcome ${obj} to ${comp} and wish ${obj} a successful and enr
                                           </span>
                                         )}
                                         {isHoliday && (
-                                          <span className="text-[9px] bg-amber-100 text-amber-800 border border-amber-300 font-extrabold px-1.5 py-0.2 rounded-full uppercase">
-                                            Festival
+                                          <span className="inline-flex items-center gap-1 text-[9px] bg-amber-100 text-amber-900 border border-amber-300 font-extrabold px-1.5 py-0.5 rounded-full uppercase">
+                                            <img
+                                              src={getFestivalDetails(row.holiday_name).image}
+                                              alt={row.holiday_name}
+                                              className="w-3.5 h-3.5 rounded-full object-contain"
+                                            />
+                                            <span>Festival</span>
                                           </span>
                                         )}
                                       </div>
@@ -3508,15 +3676,26 @@ We are pleased to welcome ${obj} to ${comp} and wish ${obj} a successful and enr
                                             <span>Came to Office (Present)</span>
                                           </span>
                                           {row.is_holiday && (
-                                            <div className="text-[11px] text-amber-700 font-bold ml-1">
-                                              🪔 {row.holiday_name} (Festival Attended)
+                                            <div className="flex items-center gap-1.5 text-[11px] text-amber-800 font-bold ml-1 mt-0.5">
+                                              <img
+                                                src={getFestivalDetails(row.holiday_name).image}
+                                                alt={row.holiday_name}
+                                                className="w-4 h-4 rounded-full object-contain bg-white p-0.5 border border-amber-300"
+                                              />
+                                              <span>{row.holiday_name} (Festival Attended)</span>
                                             </div>
                                           )}
                                         </div>
                                       ) : isHoliday ? (
-                                        <span className="inline-flex items-center gap-1.5 bg-amber-100 text-amber-900 border border-amber-300 font-extrabold px-3 py-1 rounded-xl text-xs shadow-2xs">
-                                          <Sparkles className="w-4 h-4 text-amber-600" />
-                                          <span>🪔 Festival Day Off: {row.holiday_name}</span>
+                                        <span className="inline-flex items-center gap-2 bg-gradient-to-r from-amber-50 to-orange-50 text-amber-950 border border-amber-300 font-extrabold px-3 py-1.5 rounded-xl text-xs shadow-xs">
+                                          <div className="w-6 h-6 rounded-full bg-white p-0.5 border border-amber-300 flex items-center justify-center overflow-hidden flex-shrink-0 shadow-2xs">
+                                            <img
+                                              src={getFestivalDetails(row.holiday_name).image}
+                                              alt={row.holiday_name}
+                                              className="w-full h-full object-contain"
+                                            />
+                                          </div>
+                                          <span>Festival Day Off: {row.holiday_name}</span>
                                         </span>
                                       ) : isAbsent ? (
                                         <span className="inline-flex items-center gap-1.5 bg-rose-100 text-rose-800 border border-rose-300 font-extrabold px-3 py-1 rounded-xl text-xs shadow-2xs">
@@ -3747,14 +3926,14 @@ We are pleased to welcome ${obj} to ${comp} and wish ${obj} a successful and enr
         )}
 
         {/* ======================================================== */}
-        {/* 4. DOCUMENT APPROVALS & PDF RELEASES (VOICE NOTE 2) */}
+        {/* 4. DOCUMENT APPROVALS & PDF RELEASES */}
         {/* ======================================================== */}
         {activeTab === 'documents' && (
           <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 space-y-4">
             <div className="pb-4 border-b border-slate-100">
               <h3 className="text-lg font-bold text-slate-900">Internship Offer Letter & Certificate Release</h3>
               <p className="text-xs text-slate-500 mt-0.5">
-                Voice Note 2: When Admin approves, system auto-generates official Offer Letters and Completion Certificates as PDFs.
+                When Admin approves, system auto-generates official Offer Letters and Completion Certificates as PDFs.
               </p>
             </div>
 
@@ -3790,17 +3969,20 @@ We are pleased to welcome ${obj} to ${comp} and wish ${obj} a successful and enr
                               <button
                                 onClick={() => handleToggleDoc(s.id, 'offer_letter', false)}
                                 title="Revoke offer letter approval"
-                                className="text-[11px] text-slate-400 hover:text-rose-600 underline font-medium transition"
+                                className="inline-flex items-center gap-1 text-[11px] text-slate-400 hover:text-rose-600 font-medium transition cursor-pointer"
                               >
-                                Revoke
+                                <XCircle className="w-3 h-3 text-rose-500" />
+                                <span>Revoke</span>
                               </button>
                             </div>
                           ) : (
                             <button
                               onClick={() => handleToggleDoc(s.id, 'offer_letter', true)}
-                              className="inline-flex items-center gap-1 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 font-bold px-3 py-1.5 rounded-lg text-xs shadow-sm transition"
+                              className="inline-flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-3 py-1.5 rounded-lg text-xs shadow-xs transition cursor-pointer"
+                              title="Approve Offer Letter"
                             >
-                              <Plus className="w-3.5 h-3.5" /> Approve
+                              <CheckCircle2 className="w-3.5 h-3.5 text-white" />
+                              <span>Approve</span>
                             </button>
                           )}
 
@@ -3809,7 +3991,7 @@ We are pleased to welcome ${obj} to ${comp} and wish ${obj} a successful and enr
                               handleOpenEditOfferLetter(s);
                               navigate(`/admin/offer-letter/${s.id}`);
                             }}
-                            className="inline-flex items-center gap-1 text-slate-600 hover:text-blue-700 bg-slate-50 hover:bg-blue-50 border border-slate-200 px-2 py-0.5 rounded text-[11px] font-semibold transition"
+                            className="inline-flex items-center gap-1 text-slate-600 hover:text-blue-700 bg-slate-50 hover:bg-blue-50 border border-slate-200 px-2 py-0.5 rounded text-[11px] font-semibold transition cursor-pointer"
                             title="Edit Offer Letter on dedicated page"
                           >
                             <Edit className="w-3 h-3 text-blue-600" />
@@ -3830,17 +4012,20 @@ We are pleased to welcome ${obj} to ${comp} and wish ${obj} a successful and enr
                               <button
                                 onClick={() => handleToggleDoc(s.id, 'certificate', false)}
                                 title="Revoke certificate approval"
-                                className="text-[11px] text-slate-400 hover:text-rose-600 underline font-medium transition"
+                                className="inline-flex items-center gap-1 text-[11px] text-slate-400 hover:text-rose-600 font-medium transition cursor-pointer"
                               >
-                                Revoke
+                                <XCircle className="w-3 h-3 text-rose-500" />
+                                <span>Revoke</span>
                               </button>
                             </div>
                           ) : (
                             <button
                               onClick={() => handleToggleDoc(s.id, 'certificate', true)}
-                              className="inline-flex items-center gap-1 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 font-bold px-3 py-1.5 rounded-lg text-xs shadow-sm transition"
+                              className="inline-flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-3 py-1.5 rounded-lg text-xs shadow-xs transition cursor-pointer"
+                              title="Approve Certificate"
                             >
-                              <Plus className="w-3.5 h-3.5" /> Approve
+                              <CheckCircle2 className="w-3.5 h-3.5 text-white" />
+                              <span>Approve</span>
                             </button>
                           )}
 
@@ -3918,7 +4103,7 @@ We are pleased to welcome ${obj} to ${comp} and wish ${obj} a successful and enr
         )}
 
         {/* ======================================================== */}
-        {/* 5. SUBJECTS & ALLOCATED NOTES (VOICE NOTE 3) */}
+        {/* 5. SUBJECTS & ALLOCATED NOTES */}
         {/* ======================================================== */}
         {activeTab === 'notes' && (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -3983,7 +4168,7 @@ We are pleased to welcome ${obj} to ${comp} and wish ${obj} a successful and enr
                   <span>Allocate Subject to Student</span>
                 </h3>
                 <p className="text-[11px] text-slate-500 mb-3">
-                  Voice Note 3: Students can ONLY view notes for subjects allocated to them.
+                  Students can ONLY view notes for subjects allocated to them.
                 </p>
                 <form noValidate onSubmit={handleAllocateSubject} className="space-y-3 text-xs">
                   <div>
@@ -4286,7 +4471,7 @@ We are pleased to welcome ${obj} to ${comp} and wish ${obj} a successful and enr
         )}
 
         {/* ======================================================== */}
-        {/* 6. MCQ EXAM ENGINE (VOICE NOTE 2) */}
+        {/* 6. MCQ EXAM ENGINE */}
         {/* ======================================================== */}
         {activeTab === 'mcq' && (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -4713,7 +4898,7 @@ We are pleased to welcome ${obj} to ${comp} and wish ${obj} a successful and enr
                   type="button"
                   disabled={savingCertificate}
                   onClick={() => handleSaveCertificate(false)}
-                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-xs transition shadow-sm flex items-center gap-1.5 disabled:opacity-50"
+                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl text-xs transition shadow-sm flex items-center gap-1.5 disabled:opacity-50"
                 >
                   {savingCertificate ? 'Saving...' : 'Save Changes'}
                 </button>
@@ -4723,7 +4908,7 @@ We are pleased to welcome ${obj} to ${comp} and wish ${obj} a successful and enr
                     type="button"
                     disabled={savingCertificate}
                     onClick={() => handleSaveCertificate(true)}
-                    className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl text-xs transition shadow-sm flex items-center gap-1.5 disabled:opacity-50"
+                    className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-xs transition shadow-sm flex items-center gap-1.5 disabled:opacity-50"
                   >
                     <CheckCircle2 className="w-3.5 h-3.5" />
                     <span>Save & Approve Document</span>
@@ -4913,6 +5098,74 @@ We are pleased to welcome ${obj} to ${comp} and wish ${obj} a successful and enr
                     <span>{adminProfileErrors.technology}</span>
                   </p>
                 )}
+              </div>
+
+              {/* Gender & Degree */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-slate-700 font-bold mb-1">Gender</label>
+                  <select
+                    value={profileFormData.gender}
+                    onChange={(e) => updateAdminProfileField('gender', e.target.value)}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-xl font-semibold text-xs focus:ring-blue-500 bg-white"
+                  >
+                    <option value="">Select Gender</option>
+                    <option value="Male">Male</option>
+                    <option value="Female">Female</option>
+                    <option value="Other">Other</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-slate-700 font-bold mb-1">Degree / Course</label>
+                  <select
+                    value={profileFormData.degree}
+                    onChange={(e) => updateAdminProfileField('degree', e.target.value)}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-xl font-semibold text-xs focus:ring-blue-500 bg-white"
+                  >
+                    <option value="">Select Degree</option>
+                    <option value="B.Tech / B.E.">B.Tech / B.E.</option>
+                    <option value="BCA">BCA</option>
+                    <option value="MCA">MCA</option>
+                    <option value="B.Sc. IT / CS">B.Sc. IT / CS</option>
+                    <option value="M.Sc. IT / CS">M.Sc. IT / CS</option>
+                    <option value="Diploma Engineering">Diploma Engineering</option>
+                    <option value="B.Com / BBA">B.Com / BBA</option>
+                    <option value="Other Degree">Other Degree</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Semester */}
+              <div>
+                <label className="block text-slate-700 font-bold mb-1">Semester (1 - 10)</label>
+                <select
+                  value={profileFormData.semester}
+                  onChange={(e) => updateAdminProfileField('semester', e.target.value)}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-xl font-semibold text-xs focus:ring-blue-500 bg-white"
+                >
+                  <option value="">Select Semester</option>
+                  {[...Array(10)].map((_, i) => (
+                    <option key={i + 1} value={i + 1}>
+                      Semester {i + 1}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Address */}
+              <div>
+                <label className="block text-slate-700 font-bold mb-1">Residential Address</label>
+                <div className="relative">
+                  <MapPin className="w-4 h-4 absolute left-3 top-2.5 text-slate-400" />
+                  <input
+                    type="text"
+                    placeholder="e.g. 102, Shivalik Plaza, Ambawadi, Ahmedabad"
+                    value={profileFormData.address}
+                    onChange={(e) => updateAdminProfileField('address', e.target.value)}
+                    className="w-full pl-9 pr-3 py-2 border border-slate-300 rounded-xl font-semibold text-xs focus:ring-blue-500"
+                  />
+                </div>
               </div>
 
               {/* Modal Footer Actions */}
@@ -5112,6 +5365,74 @@ We are pleased to welcome ${obj} to ${comp} and wish ${obj} a successful and enr
                 </div>
               </div>
 
+              {/* Gender & Degree */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-slate-700 font-bold mb-1">Gender</label>
+                  <select
+                    value={newStudentData.gender}
+                    onChange={(e) => updateAddStudentField('gender', e.target.value)}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-xl font-semibold text-xs focus:ring-blue-500 bg-white"
+                  >
+                    <option value="">Select Gender</option>
+                    <option value="Male">Male</option>
+                    <option value="Female">Female</option>
+                    <option value="Other">Other</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-slate-700 font-bold mb-1">Degree / Course</label>
+                  <select
+                    value={newStudentData.degree}
+                    onChange={(e) => updateAddStudentField('degree', e.target.value)}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-xl font-semibold text-xs focus:ring-blue-500 bg-white"
+                  >
+                    <option value="">Select Degree</option>
+                    <option value="B.Tech / B.E.">B.Tech / B.E.</option>
+                    <option value="BCA">BCA</option>
+                    <option value="MCA">MCA</option>
+                    <option value="B.Sc. IT / CS">B.Sc. IT / CS</option>
+                    <option value="M.Sc. IT / CS">M.Sc. IT / CS</option>
+                    <option value="Diploma Engineering">Diploma Engineering</option>
+                    <option value="B.Com / BBA">B.Com / BBA</option>
+                    <option value="Other Degree">Other Degree</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Semester */}
+              <div>
+                <label className="block text-slate-700 font-bold mb-1">Semester (1 - 10)</label>
+                <select
+                  value={newStudentData.semester}
+                  onChange={(e) => updateAddStudentField('semester', e.target.value)}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-xl font-semibold text-xs focus:ring-blue-500 bg-white"
+                >
+                  <option value="">Select Semester</option>
+                  {[...Array(10)].map((_, i) => (
+                    <option key={i + 1} value={i + 1}>
+                      Semester {i + 1}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Residential Address */}
+              <div>
+                <label className="block text-slate-700 font-bold mb-1">Residential Address</label>
+                <div className="relative">
+                  <MapPin className="w-4 h-4 absolute left-3 top-2.5 text-slate-400" />
+                  <input
+                    type="text"
+                    placeholder="e.g. 102, Shivalik Plaza, Ambawadi, Ahmedabad"
+                    value={newStudentData.address}
+                    onChange={(e) => updateAddStudentField('address', e.target.value)}
+                    className="w-full pl-9 pr-3 py-2 border border-slate-300 rounded-xl font-semibold text-xs focus:ring-blue-500"
+                  />
+                </div>
+              </div>
+
               {/* Login Username & Password */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-slate-100">
                 <div>
@@ -5167,9 +5488,10 @@ We are pleased to welcome ${obj} to ${comp} and wish ${obj} a successful and enr
                 <button
                   type="submit"
                   disabled={creatingStudent}
-                  className="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-xs transition shadow-sm flex items-center gap-1.5 disabled:opacity-50"
+                  className="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-xs transition shadow-sm flex items-center gap-1.5 disabled:opacity-50 cursor-pointer"
                 >
-                  {creatingStudent ? 'Creating...' : 'Register & Approve Student'}
+                  <UserCheck className="w-4 h-4" />
+                  <span>{creatingStudent ? 'Creating...' : 'Register & Approve Student'}</span>
                 </button>
               </div>
             </form>
@@ -5351,10 +5673,21 @@ We are pleased to welcome ${obj} to ${comp} and wish ${obj} a successful and enr
                               {h.date}
                             </td>
                             <td className="px-3.5 py-2.5 whitespace-nowrap">
-                              <span className="font-extrabold text-slate-900">🪔 {h.name}</span>
-                              {h.description && (
-                                <span className="block text-[11px] text-slate-400 font-normal">{h.description}</span>
-                              )}
+                              <div className="flex items-center gap-2.5">
+                                <div className="w-8 h-8 rounded-full bg-amber-50 border border-amber-300 p-0.5 flex-shrink-0 flex items-center justify-center overflow-hidden shadow-xs">
+                                  <img
+                                    src={getFestivalDetails(h.name).image}
+                                    alt={h.name}
+                                    className="w-full h-full object-contain"
+                                  />
+                                </div>
+                                <div>
+                                  <span className="font-extrabold text-slate-900 block">{h.name}</span>
+                                  {h.description && (
+                                    <span className="block text-[11px] text-slate-400 font-normal">{h.description}</span>
+                                  )}
+                                </div>
+                              </div>
                             </td>
                             <td className="px-3.5 py-2.5 whitespace-nowrap">
                               <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${

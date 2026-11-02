@@ -1,0 +1,55 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="100%" height="100%">
+  <defs>
+    <radialGradient id="bg_ny" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#FFF9C4"/>
+      <stop offset="60%" stop-color="#FFF176"/>
+      <stop offset="100%" stop-color="#FBC02D"/>
+    </radialGradient>
+    <linearGradient id="kalash_g" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FFE082"/>
+      <stop offset="50%" stop-color="#FFA000"/>
+      <stop offset="100%" stop-color="#FF6F00"/>
+    </linearGradient>
+  </defs>
+  <!-- Background -->
+  <circle cx="60" cy="60" r="54" fill="url(#bg_ny)" stroke="#F57F17" stroke-width="2.5"/>
+
+  <!-- Mango Leaves (Amra Pallav) -->
+  <g transform="translate(60, 48)">
+    <path d="M 0 0 C -12 -18 -30 -12 -28 -4 C -20 0 -10 2 0 0 Z" fill="#2E7D32"/>
+    <path d="M 0 0 C 12 -18 30 -12 28 -4 C 20 0 10 2 0 0 Z" fill="#2E7D32"/>
+    <path d="M 0 0 C -8 -22 -15 -24 -12 -28 C -6 -28 0 -18 0 0 Z" fill="#388E3C"/>
+    <path d="M 0 0 C 8 -22 15 -24 12 -28 C 6 -28 0 -18 0 0 Z" fill="#388E3C"/>
+    <path d="M 0 0 C -4 -28 4 -28 0 0 Z" fill="#4CAF50"/>
+    <!-- Coconut (Nariyal / Shriphal) -->
+    <ellipse cx="0" cy="-14" rx="11" ry="14" fill="#6D4C41" stroke="#3E2723" stroke-width="1.5"/>
+    <circle cx="0" cy="-24" r="2.5" fill="#D32F2F"/>
+  </g>
+
+  <!-- Golden Kalash Pot -->
+  <g>
+    <!-- Rim -->
+    <ellipse cx="60" cy="50" rx="20" ry="5" fill="#FFD54F" stroke="#E65100" stroke-width="1.5"/>
+    <!-- Pot Body -->
+    <path d="M 42 52 C 34 60 36 78 48 83 L 72 83 C 84 78 86 60 78 52 Z" fill="url(#kalash_g)" stroke="#E65100" stroke-width="1.5"/>
+    <!-- Base -->
+    <ellipse cx="60" cy="83" rx="14" ry="3.5" fill="#FFB300" stroke="#E65100" stroke-width="1.5"/>
+    <!-- Auspicious Swastik on Kalash -->
+    <g transform="translate(60, 68)" stroke="#D50000" stroke-width="2.5" stroke-linecap="square">
+      <line x1="0" y1="-8" x2="0" y2="8"/>
+      <line x1="-8" y1="0" x2="8" y2="0"/>
+      <line x1="0" y1="-8" x2="6" y2="-8"/>
+      <line x1="0" y1="8" x2="-6" y2="8"/>
+      <line x1="-8" y1="0" x2="-8" y2="-6"/>
+      <line x1="8" y1="0" x2="8" y2="6"/>
+      <circle cx="-4" cy="-4" r="1" fill="#D50000"/>
+      <circle cx="4" cy="-4" r="1" fill="#D50000"/>
+      <circle cx="-4" cy="4" r="1" fill="#D50000"/>
+      <circle cx="4" cy="4" r="1" fill="#D50000"/>
+    </g>
+  </g>
+
+  <!-- Bottom Pill -->
+  <rect x="20" y="90" width="80" height="18" rx="9" fill="#D84315"/>
+  <text x="60" y="103" text-anchor="middle" font-family="Arial, sans-serif" font-weight="900" font-size="8" fill="#FFFFFF" letter-spacing="0.5">BESTU VARAS</text>
+</svg>
