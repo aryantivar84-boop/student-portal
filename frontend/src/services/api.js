@@ -1,4 +1,6 @@
-const API_BASE = 'http://localhost:8000/api';
+const RAW_BACKEND_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+export const BACKEND_URL = RAW_BACKEND_URL.replace(/\/+$/, '');
+const API_BASE = `${BACKEND_URL}/api`;
 
 export const getMediaUrl = (urlOrPath) => {
   if (!urlOrPath) return '';
@@ -7,7 +9,7 @@ export const getMediaUrl = (urlOrPath) => {
     return urlOrPath;
   }
   const cleanPath = urlOrPath.startsWith('/') ? urlOrPath : `/${urlOrPath}`;
-  return `http://localhost:8000${cleanPath}`;
+  return `${BACKEND_URL}${cleanPath}`;
 };
 
 export const api = {
@@ -141,7 +143,7 @@ export const api = {
   getMediaUrl: (url) => {
     if (!url) return '';
     if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('blob:') || url.startsWith('data:')) return url;
-    return `http://localhost:8000${url.startsWith('/') ? '' : '/'}${url}`;
+    return `${BACKEND_URL}${url.startsWith('/') ? '' : '/'}${url}`;
   },
 
   updateCertificate: async (studentId, data) => {
@@ -253,7 +255,7 @@ export const api = {
   getNoteDocumentUrl: (docUrl) => {
     if (!docUrl) return '';
     if (docUrl.startsWith('http://') || docUrl.startsWith('https://')) return docUrl;
-    return `http://localhost:8000${docUrl.startsWith('/') ? '' : '/'}${docUrl}`;
+    return `${BACKEND_URL}${docUrl.startsWith('/') ? '' : '/'}${docUrl}`;
   },
 
   // MCQ Exams
