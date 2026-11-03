@@ -411,6 +411,29 @@ export default function StudentPortal({ student, onRefreshProfile }) {
     return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
   };
 
+  // Helper: Calculate individual break duration in seconds
+  const getBreakDurationSec = (b) => {
+    if (!b || !b.pause_time) return 0;
+    if (b.duration_seconds !== undefined && b.duration_seconds !== null && b.duration_seconds > 0) {
+      return b.duration_seconds;
+    }
+    const start = new Date(b.pause_time).getTime();
+    const end = b.resume_time ? new Date(b.resume_time).getTime() : Date.now();
+    if (isNaN(start) || isNaN(end)) return 0;
+    return Math.max(0, Math.floor((end - start) / 1000));
+  };
+
+  // Helper: Format break seconds to readable minutes & seconds
+  const formatBreakDuration = (totalSec) => {
+    if (!totalSec || totalSec <= 0) return '0s';
+    const hrs = Math.floor(totalSec / 3600);
+    const mins = Math.floor((totalSec % 3600) / 60);
+    const secs = totalSec % 60;
+    if (hrs > 0) return `${hrs}h ${mins}m`;
+    if (mins > 0) return secs > 0 ? `${mins}m ${secs}s` : `${mins}m`;
+    return `${secs}s`;
+  };
+
   // Daily Work Report Handlers
   const handleAddSlot = () => {
     setTimeSlots([...timeSlots, { slot: '', task: '' }]);
@@ -1911,30 +1934,49 @@ export default function StudentPortal({ student, onRefreshProfile }) {
 
                 {attendance?.breaks && attendance.breaks.length > 0 ? (
                   <div className="overflow-x-auto mt-4">
+                    <div className="mb-3 text-xs font-bold text-amber-800 bg-amber-50 border border-amber-200 px-3.5 py-2 rounded-2xl flex items-center justify-between flex-wrap gap-2">
+                      <span className="flex items-center gap-1.5">
+                        <Coffee className="w-4 h-4 text-amber-600" />
+                        <span>Total Break Time Today:</span>
+                      </span>
+                      <span className="font-extrabold text-amber-950 bg-amber-100 border border-amber-300 px-2.5 py-0.5 rounded-full text-xs">
+                        {formatBreakDuration(attendance.breaks.reduce((acc, b) => acc + getBreakDurationSec(b), 0))} ({attendance.breaks.length} break{attendance.breaks.length > 1 ? 's' : ''})
+                      </span>
+                    </div>
                     <table className="min-w-full divide-y divide-slate-100 text-xs">
                       <thead>
                         <tr className="text-left text-slate-500 uppercase font-semibold">
                           <th className="py-2.5">Break Reason</th>
                           <th className="py-2.5">Paused At</th>
                           <th className="py-2.5">Resumed At</th>
+                          <th className="py-2.5">Duration</th>
                           <th className="py-2.5 text-right">Status</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100 text-slate-700">
-                        {attendance.breaks.map((b, idx) => (
-                          <tr key={idx} className="hover:bg-slate-50">
-                            <td className="py-3 font-semibold text-slate-900">{b.reason}</td>
-                            <td className="py-3 font-mono">{new Date(b.pause_time).toLocaleTimeString()}</td>
-                            <td className="py-3 font-mono">{b.resume_time ? new Date(b.resume_time).toLocaleTimeString() : 'In Progress'}</td>
-                            <td className="py-3 text-right">
-                              {b.resume_time ? (
-                                <span className="text-emerald-700 font-semibold bg-emerald-50 px-2 py-0.5 rounded">Completed</span>
-                              ) : (
-                                <span className="text-amber-700 font-semibold bg-amber-50 px-2 py-0.5 rounded">Active Break</span>
-                              )}
-                            </td>
-                          </tr>
-                        ))}
+                        {attendance.breaks.map((b, idx) => {
+                          const bSec = getBreakDurationSec(b);
+                          const bFmt = b.duration_formatted || formatBreakDuration(bSec);
+                          return (
+                            <tr key={idx} className="hover:bg-slate-50">
+                              <td className="py-3 font-semibold text-slate-900">{b.reason}</td>
+                              <td className="py-3 font-mono">{b.pause_time ? new Date(b.pause_time).toLocaleTimeString() : '--'}</td>
+                              <td className="py-3 font-mono">{b.resume_time ? new Date(b.resume_time).toLocaleTimeString() : 'In Progress'}</td>
+                              <td className="py-3 font-bold text-amber-800">
+                                <span className="bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-md text-[11px]">
+                                  {bFmt}
+                                </span>
+                              </td>
+                              <td className="py-3 text-right">
+                                {b.resume_time ? (
+                                  <span className="text-emerald-700 font-semibold bg-emerald-50 px-2 py-0.5 rounded">Completed</span>
+                                ) : (
+                                  <span className="text-amber-700 font-semibold bg-amber-50 px-2 py-0.5 rounded animate-pulse">Active Break</span>
+                                )}
+                              </td>
+                            </tr>
+                          );
+                        })}
                       </tbody>
                     </table>
                   </div>

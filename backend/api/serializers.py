@@ -2,6 +2,7 @@ import re
 from rest_framework import serializers
 from django.contrib.auth.models import User
 from django.db import transaction
+from django.utils import timezone
 from .models import (
     StudentProfile, Attendance, BreakLog, DailyWorkReport,
     Subject, SubjectAllocation, StudyNote, MCQCategory, MCQQuestion, ExamResult,
@@ -237,19 +238,94 @@ class StudentProfileSerializer(serializers.ModelSerializer):
 
 
 class BreakLogSerializer(serializers.ModelSerializer):
+    duration_seconds = serializers.SerializerMethodField()
+    duration_formatted = serializers.SerializerMethodField()
+    pause_time_formatted = serializers.SerializerMethodField()
+    resume_time_formatted = serializers.SerializerMethodField()
+
     class Meta:
         model = BreakLog
         fields = '__all__'
+
+    def get_duration_seconds(self, obj):
+        if not obj.pause_time:
+            return 0
+        end_time = obj.resume_time or timezone.now()
+        try:
+            secs = int((end_time - obj.pause_time).total_seconds())
+            return max(0, secs)
+        except Exception:
+            return 0
+
+    def get_duration_formatted(self, obj):
+        secs = self.get_duration_seconds(obj)
+        if secs <= 0:
+            return "0s"
+        m, s = divmod(secs, 60)
+        h, m = divmod(m, 60)
+        if h > 0:
+            return f"{h}h {m}m"
+        if m > 0:
+            return f"{m}m {s}s" if s > 0 else f"{m}m"
+        return f"{s}s"
+
+    def get_pause_time_formatted(self, obj):
+        if not obj.pause_time:
+            return None
+        try:
+            return timezone.localtime(obj.pause_time).strftime('%I:%M:%S %p')
+        except Exception:
+            return str(obj.pause_time)
+
+    def get_resume_time_formatted(self, obj):
+        if not obj.resume_time:
+            return 'In Progress'
+        try:
+            return timezone.localtime(obj.resume_time).strftime('%I:%M:%S %p')
+        except Exception:
+            return str(obj.resume_time)
 
 
 class AttendanceSerializer(serializers.ModelSerializer):
     breaks = BreakLogSerializer(many=True, read_only=True)
     student_name = serializers.CharField(source='student.full_name', read_only=True)
     technology = serializers.CharField(source='student.technology', read_only=True)
+    total_break_seconds = serializers.SerializerMethodField()
+    total_break_formatted = serializers.SerializerMethodField()
+    break_count = serializers.SerializerMethodField()
 
     class Meta:
         model = Attendance
         fields = '__all__'
+
+    def get_break_count(self, obj):
+        return obj.breaks.count()
+
+    def get_total_break_seconds(self, obj):
+        total = 0
+        try:
+            for b in obj.breaks.all():
+                if not b.pause_time:
+                    continue
+                end = b.resume_time or (timezone.now() if obj.is_paused else b.pause_time)
+                secs = int((end - b.pause_time).total_seconds())
+                if secs > 0:
+                    total += secs
+        except Exception:
+            pass
+        return total
+
+    def get_total_break_formatted(self, obj):
+        secs = self.get_total_break_seconds(obj)
+        if secs <= 0:
+            return "0m"
+        m, s = divmod(secs, 60)
+        h, m = divmod(m, 60)
+        if h > 0:
+            return f"{h}h {m}m"
+        if m > 0:
+            return f"{m}m {s}s" if s > 0 else f"{m}m"
+        return f"{s}s"
 
 
 class DailyWorkReportSerializer(serializers.ModelSerializer):

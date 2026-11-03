@@ -7,7 +7,7 @@ import {
   ChevronRight, AlertCircle, ArrowUpRight, GraduationCap, Building2,
   Calendar, UserCheck, ShieldAlert, Sparkles, RefreshCw, Eye, Edit, X,
   Bell, Send, Megaphone, Trash2, User, Mail, Phone, School, Code2, AlertTriangle,
-  UploadCloud, Paperclip, ArrowLeft, MapPin,
+  UploadCloud, Paperclip, ArrowLeft, MapPin, Coffee,
   AlignLeft, AlignCenter, AlignRight
 } from 'lucide-react';
 import WordRibbonEditor from './WordRibbonEditor';
@@ -45,6 +45,30 @@ export default function AdminPortal() {
   const [loadingAttendance, setLoadingAttendance] = useState(false);
   const [attendanceSortAsc, setAttendanceSortAsc] = useState(false); // false = latest date first
   const [attendanceSearch, setAttendanceSearch] = useState('');
+  const [expandedSessionBreaksId, setExpandedSessionBreaksId] = useState(null);
+
+  // Helper: Calculate individual break duration in seconds
+  const getBreakDurationSeconds = (b) => {
+    if (!b || !b.pause_time) return 0;
+    if (b.duration_seconds !== undefined && b.duration_seconds !== null && b.duration_seconds > 0) {
+      return b.duration_seconds;
+    }
+    const start = new Date(b.pause_time).getTime();
+    const end = b.resume_time ? new Date(b.resume_time).getTime() : Date.now();
+    if (isNaN(start) || isNaN(end)) return 0;
+    return Math.max(0, Math.floor((end - start) / 1000));
+  };
+
+  // Helper: Format seconds to readable minutes/hours/seconds
+  const formatBreakDurationStr = (totalSecs) => {
+    if (!totalSecs || totalSecs <= 0) return '0s';
+    const hrs = Math.floor(totalSecs / 3600);
+    const mins = Math.floor((totalSecs % 3600) / 60);
+    const secs = totalSecs % 60;
+    if (hrs > 0) return `${hrs}h ${mins}m`;
+    if (mins > 0) return secs > 0 ? `${mins}m ${secs}s` : `${mins}m`;
+    return `${secs}s`;
+  };
 
   // Live Attendance Pop-up Notification State
   const [liveClockAlert, setLiveClockAlert] = useState(null);
@@ -3927,12 +3951,20 @@ We are pleased to welcome ${obj} to ${comp} and wish ${obj} a successful and enr
                                       )}
                                     </td>
 
-                                    {/* Duration */}
+                                    {/* Duration & Breaks */}
                                     <td className="px-4 py-3 whitespace-nowrap">
                                       {isPresent ? (
-                                        <span className="font-extrabold text-slate-800 text-xs bg-slate-100 px-2 py-0.5 rounded">
-                                          {row.duration}
-                                        </span>
+                                        <div className="space-y-1">
+                                          <span className="font-extrabold text-slate-800 text-xs bg-slate-100 px-2 py-0.5 rounded inline-block">
+                                            {row.duration}
+                                          </span>
+                                          {row.break_count > 0 && (
+                                            <div className="text-[10px] font-bold text-amber-800 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded flex items-center gap-1 w-fit">
+                                              <Coffee className="w-3 h-3 text-amber-600" />
+                                              <span>Break: {row.total_break_formatted} ({row.break_count})</span>
+                                            </div>
+                                          )}
+                                        </div>
                                       ) : (
                                         <span className="text-slate-300">0h 0m</span>
                                       )}
@@ -3994,7 +4026,7 @@ We are pleased to welcome ${obj} to ${comp} and wish ${obj} a successful and enr
                           <th className="px-4 py-3.5 text-left">Clock In</th>
                           <th className="px-4 py-3.5 text-left">Clock Out</th>
                           <th className="px-4 py-3.5 text-left">Total Worked</th>
-                          <th className="px-4 py-3.5 text-left">Breaks Logged</th>
+                          <th className="px-4 py-3.5 text-left">Breaks Logged (Duration & Minutes)</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100 text-slate-700 bg-white">
@@ -4008,23 +4040,101 @@ We are pleased to welcome ${obj} to ${comp} and wish ${obj} a successful and enr
                           attendanceRecords.map((att) => {
                             const hrs = Math.floor((att.total_seconds_worked || 0) / 3600);
                             const mins = Math.floor(((att.total_seconds_worked || 0) % 3600) / 60);
+                            const breakList = att.breaks || [];
+                            const totalBreakSecs = att.total_break_seconds !== undefined && att.total_break_seconds !== null
+                              ? att.total_break_seconds
+                              : breakList.reduce((acc, b) => acc + getBreakDurationSeconds(b), 0);
+                            const totalBreakFormatted = att.total_break_formatted || formatBreakDurationStr(totalBreakSecs);
+                            const isExpanded = expandedSessionBreaksId === att.id;
+
                             return (
-                              <tr key={att.id} className="hover:bg-slate-50 transition">
-                                <td className="px-4 py-3 font-bold text-slate-900">{att.student_name}</td>
-                                <td className="px-4 py-3">{att.date}</td>
-                                <td className="px-4 py-3 font-mono font-bold text-emerald-700">
-                                  {att.clock_in ? new Date(att.clock_in).toLocaleTimeString() : '--'}
-                                </td>
-                                <td className="px-4 py-3 font-mono font-bold text-rose-700">
-                                  {att.clock_out ? new Date(att.clock_out).toLocaleTimeString() : 'In Session'}
-                                </td>
-                                <td className="px-4 py-3 font-semibold text-slate-800">
-                                  {hrs}h {mins}m ({att.total_seconds_worked || 0}s)
-                                </td>
-                                <td className="px-4 py-3 text-slate-500">
-                                  {att.breaks?.length ? `${att.breaks.length} break(s)` : 'None'}
-                                </td>
-                              </tr>
+                              <React.Fragment key={att.id}>
+                                <tr className={`hover:bg-slate-50 transition ${isExpanded ? 'bg-amber-50/20' : ''}`}>
+                                  <td className="px-4 py-3 font-bold text-slate-900">{att.student_name}</td>
+                                  <td className="px-4 py-3">{att.date}</td>
+                                  <td className="px-4 py-3 font-mono font-bold text-emerald-700">
+                                    {att.clock_in ? new Date(att.clock_in).toLocaleTimeString() : '--'}
+                                  </td>
+                                  <td className="px-4 py-3 font-mono font-bold text-rose-700">
+                                    {att.clock_out ? new Date(att.clock_out).toLocaleTimeString() : 'In Session'}
+                                  </td>
+                                  <td className="px-4 py-3 font-semibold text-slate-800">
+                                    {hrs}h {mins}m ({att.total_seconds_worked || 0}s)
+                                  </td>
+                                  <td className="px-4 py-3">
+                                    {breakList.length > 0 ? (
+                                      <div className="flex items-center gap-2 flex-wrap">
+                                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-extrabold bg-amber-50 text-amber-900 border border-amber-300 shadow-2xs">
+                                          <Coffee className="w-3.5 h-3.5 text-amber-600" />
+                                          <span>{totalBreakFormatted}</span>
+                                          <span className="text-amber-600 font-medium">({breakList.length} break{breakList.length > 1 ? 's' : ''})</span>
+                                        </span>
+                                        <button
+                                          type="button"
+                                          onClick={() => setExpandedSessionBreaksId(isExpanded ? null : att.id)}
+                                          className="text-[11px] font-bold text-blue-600 hover:text-blue-800 hover:underline px-2 py-0.5 rounded bg-blue-50/70 hover:bg-blue-100 transition inline-flex items-center gap-0.5"
+                                        >
+                                          {isExpanded ? '▲ Hide breakdown' : '▼ View break details'}
+                                        </button>
+                                      </div>
+                                    ) : (
+                                      <span className="text-slate-400 text-xs font-medium">None</span>
+                                    )}
+                                  </td>
+                                </tr>
+
+                                {isExpanded && breakList.length > 0 && (
+                                  <tr className="bg-amber-50/40 border-b border-amber-200">
+                                    <td colSpan={6} className="px-6 py-3">
+                                      <div className="bg-white rounded-xl border border-amber-200 p-3.5 shadow-xs">
+                                        <div className="flex items-center justify-between border-b border-amber-100 pb-2 mb-2.5 flex-wrap gap-2">
+                                          <div className="flex items-center gap-2">
+                                            <Coffee className="w-4 h-4 text-amber-600" />
+                                            <span className="text-xs font-bold text-slate-900">
+                                              Break Duration Log for {att.student_name} ({att.date})
+                                            </span>
+                                          </div>
+                                          <div className="text-xs font-extrabold text-amber-900 bg-amber-100 border border-amber-300 px-3 py-1 rounded-full">
+                                            Total Break Time: {totalBreakFormatted} ({breakList.length} break{breakList.length > 1 ? 's' : ''})
+                                          </div>
+                                        </div>
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
+                                          {breakList.map((b, bIdx) => {
+                                            const bSec = getBreakDurationSeconds(b);
+                                            const pTime = b.pause_time_formatted || (b.pause_time ? new Date(b.pause_time).toLocaleTimeString() : '--');
+                                            const rTime = b.resume_time_formatted || (b.resume_time ? new Date(b.resume_time).toLocaleTimeString() : 'In Progress');
+                                            const bFmt = b.duration_formatted || formatBreakDurationStr(bSec);
+                                            return (
+                                              <div
+                                                key={b.id || bIdx}
+                                                className="bg-amber-50/50 rounded-lg p-2.5 border border-amber-200 flex items-center justify-between gap-3 text-xs"
+                                              >
+                                                <div>
+                                                  <div className="font-bold text-slate-800 flex items-center gap-1.5">
+                                                    <span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
+                                                    <span>{b.reason || 'Break'}</span>
+                                                  </div>
+                                                  <div className="text-[11px] text-slate-500 font-mono mt-0.5">
+                                                    {pTime} → {rTime}
+                                                  </div>
+                                                </div>
+                                                <div className="text-right flex-shrink-0">
+                                                  <div className="font-extrabold text-amber-900 bg-amber-100 border border-amber-300 px-2 py-0.5 rounded text-[11px]">
+                                                    {bFmt}
+                                                  </div>
+                                                  <div className="text-[10px] text-slate-500 mt-0.5 font-medium">
+                                                    {b.resume_time ? 'Completed' : '● In Progress'}
+                                                  </div>
+                                                </div>
+                                              </div>
+                                            );
+                                          })}
+                                        </div>
+                                      </div>
+                                    </td>
+                                  </tr>
+                                )}
+                              </React.Fragment>
                             );
                           })
                         )}

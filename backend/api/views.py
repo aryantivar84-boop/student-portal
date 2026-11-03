@@ -875,6 +875,10 @@ def get_attendance_daily_report(request):
             att = att_map.get(key)
             rep = rep_map.get(key)
 
+            total_brk_sec = 0
+            brk_fmt = "0m"
+            brk_cnt = 0
+
             if att:
                 status_code = 'PRESENT'
                 status_label = f"Came to Office (Holiday: {holiday_name})" if is_holiday else 'Came to Office (Present)'
@@ -888,6 +892,27 @@ def get_attendance_daily_report(request):
                 duration_str = f"{hrs}h {mins}m"
                 has_report = rep is not None
                 report_task_count = len(rep.tasks) if rep and rep.tasks else 0
+
+                # Compute breaks summary
+                break_list = list(att.breaks.all())
+                brk_cnt = len(break_list)
+                for b in break_list:
+                    if b.pause_time:
+                        end = b.resume_time or (timezone.now() if att.is_paused else b.pause_time)
+                        s = int((end - b.pause_time).total_seconds())
+                        if s > 0:
+                            total_brk_sec += s
+                b_hrs = total_brk_sec // 3600
+                b_mins = (total_brk_sec % 3600) // 60
+                b_secs = total_brk_sec % 60
+                if b_hrs > 0:
+                    brk_fmt = f"{b_hrs}h {b_mins}m"
+                elif b_mins > 0:
+                    brk_fmt = f"{b_mins}m {b_secs}s" if b_secs > 0 else f"{b_mins}m"
+                elif total_brk_sec > 0:
+                    brk_fmt = f"{b_secs}s"
+                else:
+                    brk_fmt = "0m"
             elif is_holiday:
                 status_code = 'HOLIDAY'
                 status_label = f"Day Off - {holiday_name}"
@@ -941,6 +966,9 @@ def get_attendance_daily_report(request):
                 'clock_out': clock_out,
                 'duration': duration_str,
                 'seconds_worked': att.total_seconds_worked if att else 0,
+                'total_break_seconds': total_brk_sec,
+                'total_break_formatted': brk_fmt,
+                'break_count': brk_cnt,
                 'has_report': has_report,
                 'report_tasks_count': report_task_count,
             })
