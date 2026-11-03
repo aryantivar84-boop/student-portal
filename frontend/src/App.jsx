@@ -23,12 +23,14 @@ function AppContent() {
 
   // Read directly from state or multi-tier storage
   const getActiveUser = () => {
-    if (currentUser && (currentUser.role === 'admin' || currentUser.role === 'student')) {
-      return currentUser;
-    }
-    const session = getPortalSession(location.pathname);
-    if (session) return session;
     if (location.pathname.startsWith('/admin')) {
+      if (currentUser && currentUser.role === 'admin') {
+        return currentUser;
+      }
+      const adminSession = getPortalSession('/admin');
+      if (adminSession && adminSession.role === 'admin') {
+        return adminSession;
+      }
       const defaultAdmin = {
         role: 'admin',
         username: 'admin',
@@ -39,6 +41,11 @@ function AppContent() {
       savePortalSession(defaultAdmin);
       return defaultAdmin;
     }
+    if (currentUser && currentUser.role === 'student') {
+      return currentUser;
+    }
+    const session = getPortalSession(location.pathname);
+    if (session) return session;
     return null;
   };
 

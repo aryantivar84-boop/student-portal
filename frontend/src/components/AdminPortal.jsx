@@ -4470,9 +4470,13 @@ We are pleased to welcome ${obj} to ${comp} and wish ${obj} a successful and enr
                       }`}
                     >
                       <option value="">-- Choose Student --</option>
-                      {students.map((s) => (
-                        <option key={s.id} value={s.id}>{s.full_name} ({s.technology})</option>
-                      ))}
+                      {students
+                        .filter((s) => s.is_approved !== false)
+                        .map((s) => (
+                          <option key={s.id} value={s.id}>
+                            {s.full_name} ({s.technology || 'General'})
+                          </option>
+                        ))}
                     </select>
                     {allocErrors.student_id && (
                       <p className="mt-1 text-xs text-rose-600 font-semibold flex items-center gap-1">
@@ -4528,218 +4532,209 @@ We are pleased to welcome ${obj} to ${comp} and wish ${obj} a successful and enr
                   <span>Upload / Publish Study Notes</span>
                 </h3>
                 <form noValidate onSubmit={handleCreateNote} className="space-y-3 text-xs">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div className="relative">
-                      <div className="flex justify-between items-center mb-1">
-                        <label className="block font-semibold text-slate-700 flex items-center gap-1.5">
-                          <Users className="w-3.5 h-3.5 text-blue-600" />
-                          <span>Select Users / Students *</span>
-                        </label>
-                        <span className="text-[10px] text-blue-600 font-bold">
-                          {selectedNoteUserIds.includes('all')
-                            ? `📢 All Students (${students.length})`
-                            : selectedNoteUserIds.length > 0
-                              ? `✓ ${selectedNoteUserIds.length} Selected`
-                              : 'Multi-select Enabled'}
+                  {/* Note Title */}
+                  <div>
+                    <label className="block font-semibold text-slate-700 mb-1">Note Title *</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Introduction to React Hooks, Deep Learning Concepts..."
+                      value={newNote.title}
+                      onChange={(e) => {
+                        setNewNote({ ...newNote, title: e.target.value });
+                        if (noteErrors.title) setNoteErrors((prev) => ({ ...prev, title: '' }));
+                      }}
+                      className={`w-full p-2.5 border rounded-xl focus:ring-2 font-medium transition ${
+                        noteErrors.title ? 'border-rose-400 bg-rose-50/20 focus:ring-rose-400' : 'border-slate-300 focus:ring-blue-500'
+                      }`}
+                    />
+                    {noteErrors.title && (
+                      <p className="mt-1 text-xs text-rose-600 font-semibold flex items-center gap-1">
+                        <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
+                        <span>{noteErrors.title}</span>
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Recipient Students Selection (Approved / Verified Only) */}
+                  <div className="space-y-2 bg-slate-50/70 p-3 rounded-2xl border border-slate-200">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div className="flex items-center gap-1.5">
+                        <Users className="w-4 h-4 text-blue-600" />
+                        <span className="font-bold text-slate-800 text-xs">Target Students (Approved / Verified Only) *</span>
+                        <span className="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
+                          <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                          <span>{students.filter((s) => s.is_approved !== false).length} Approved</span>
                         </span>
                       </div>
 
-                      {/* Dropdown Trigger Button */}
-                      <button
-                        type="button"
-                        onClick={() => setShowUserDropdown(!showUserDropdown)}
-                        className={`w-full p-2.5 bg-white border rounded-xl text-left font-medium transition flex items-center justify-between shadow-2xs ${
-                          noteErrors.user_id ? 'border-rose-400 bg-rose-50/20' : 'border-slate-300 hover:border-blue-400'
-                        }`}
-                      >
-                        <div className="flex flex-wrap items-center gap-1.5 overflow-hidden">
-                          {selectedNoteUserIds.length === 0 ? (
-                            <span className="text-slate-400">-- Click to Select Multiple Users --</span>
-                          ) : selectedNoteUserIds.includes('all') ? (
-                            <span className="bg-blue-100 text-blue-800 px-2.5 py-0.5 rounded-lg text-xs font-bold flex items-center gap-1">
-                              📢 All Students ({students.length})
-                            </span>
-                          ) : (
-                            <>
-                              <span className="bg-blue-100 text-blue-800 px-2 py-0.5 rounded-lg text-xs font-bold flex items-center gap-1">
-                                <Users className="w-3 h-3 text-blue-600" />
-                                {selectedNoteUserIds.length} Selected
-                              </span>
-                              {selectedNoteUserIds.slice(0, 2).map((id) => {
-                                const s = students.find((st) => st.id === Number(id) || st.id === id);
-                                return s ? (
-                                  <span key={id} className="bg-slate-100 text-slate-700 px-2 py-0.5 rounded-md text-[11px] truncate max-w-[110px]">
-                                    {s.full_name}
-                                  </span>
-                                ) : null;
-                              })}
-                              {selectedNoteUserIds.length > 2 && (
-                                <span className="text-slate-500 text-[11px] font-semibold">
-                                  +{selectedNoteUserIds.length - 2} more
-                                </span>
-                              )}
-                            </>
-                          )}
+                      {/* Mode Toggles */}
+                      <div className="inline-flex rounded-xl bg-slate-200/80 p-0.5 text-[11px] font-bold">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedNoteUserIds(['all']);
+                            if (noteErrors.user_id) setNoteErrors((prev) => ({ ...prev, user_id: '' }));
+                          }}
+                          className={`px-3 py-1 rounded-lg transition-all flex items-center gap-1 cursor-pointer ${
+                            selectedNoteUserIds.includes('all')
+                              ? 'bg-blue-600 text-white shadow-xs'
+                              : 'text-slate-600 hover:text-slate-900'
+                          }`}
+                        >
+                          <span>📢 All Students</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const approvedList = students.filter((s) => s.is_approved !== false);
+                            if (selectedNoteUserIds.includes('all')) {
+                              setSelectedNoteUserIds(approvedList.length > 0 ? [approvedList[0].id] : []);
+                            }
+                          }}
+                          className={`px-3 py-1 rounded-lg transition-all flex items-center gap-1 cursor-pointer ${
+                            !selectedNoteUserIds.includes('all') && selectedNoteUserIds.length > 0
+                              ? 'bg-blue-600 text-white shadow-xs'
+                              : !selectedNoteUserIds.includes('all')
+                                ? 'bg-white text-slate-900 shadow-xs'
+                                : 'text-slate-600 hover:text-slate-900'
+                          }`}
+                        >
+                          <span>👤 Specific Students</span>
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Mode Content */}
+                    {selectedNoteUserIds.includes('all') ? (
+                      <div className="p-3 bg-blue-50/80 border border-blue-200 rounded-xl flex items-center justify-between">
+                        <div className="flex items-center gap-2.5">
+                          <div className="w-8 h-8 rounded-xl bg-blue-600 text-white flex items-center justify-center font-bold text-sm shadow-xs flex-shrink-0">
+                            📢
+                          </div>
+                          <div>
+                            <p className="font-bold text-blue-900 text-xs">
+                              Publishing to all {students.filter((s) => s.is_approved !== false).length} approved students
+                            </p>
+                            <p className="text-[11px] text-blue-700">
+                              Every verified intern/student ({students.filter((s) => s.is_approved !== false).map((s) => s.full_name).join(', ')}) will automatically receive these study notes.
+                            </p>
+                          </div>
                         </div>
-                        <span className="text-slate-400 ml-2 font-bold">▾</span>
-                      </button>
-
-                      {noteErrors.user_id && (
-                        <p className="mt-1 text-xs text-rose-600 font-semibold flex items-center gap-1">
-                          <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
-                          <span>{noteErrors.user_id}</span>
-                        </p>
-                      )}
-
-                      {/* Dropdown Popup */}
-                      {showUserDropdown && (
-                        <>
-                          <div
-                            className="fixed inset-0 z-20"
-                            onClick={() => setShowUserDropdown(false)}
-                          />
-                          <div className="absolute z-30 left-0 right-0 mt-1.5 bg-white border border-slate-200 rounded-2xl shadow-2xl p-3 space-y-2">
-                            {/* Search */}
-                            <div className="relative">
-                              <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2.5" />
-                              <input
-                                type="text"
-                                placeholder="Search students by name or tech..."
-                                value={userSearchTerm}
-                                onChange={(e) => setUserSearchTerm(e.target.value)}
-                                className="w-full pl-8 pr-3 py-1.5 text-xs border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500 bg-slate-50/50"
-                              />
-                              {userSearchTerm && (
+                        <span className="text-[11px] font-extrabold text-blue-800 bg-blue-200/70 px-2.5 py-1 rounded-lg">
+                          Broadcast Active
+                        </span>
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        {/* Student interactive cards */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                          {students
+                            .filter((s) => s.is_approved !== false)
+                            .map((stu) => {
+                              const isSelected = selectedNoteUserIds.includes(stu.id);
+                              return (
                                 <button
+                                  key={stu.id}
                                   type="button"
-                                  onClick={() => setUserSearchTerm('')}
-                                  className="absolute right-2 top-1.5 text-slate-400 hover:text-slate-600 text-xs px-1"
+                                  onClick={() => {
+                                    if (noteErrors.user_id) setNoteErrors((prev) => ({ ...prev, user_id: '' }));
+                                    if (isSelected) {
+                                      setSelectedNoteUserIds(selectedNoteUserIds.filter((id) => id !== stu.id));
+                                    } else {
+                                      setSelectedNoteUserIds([...selectedNoteUserIds, stu.id]);
+                                    }
+                                  }}
+                                  className={`p-2.5 rounded-xl border text-left transition-all flex items-center justify-between cursor-pointer select-none ${
+                                    isSelected
+                                      ? 'bg-blue-50 border-blue-500 ring-2 ring-blue-500/20 shadow-xs'
+                                      : 'bg-white hover:bg-slate-50 border-slate-200 hover:border-slate-300'
+                                  }`}
                                 >
-                                  ✕
-                                </button>
-                              )}
-                            </div>
+                                  <div className="flex items-center gap-2.5 min-w-0">
+                                    <div
+                                      className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-xs flex-shrink-0 ${
+                                        isSelected ? 'bg-blue-600 text-white shadow-xs' : 'bg-slate-100 text-slate-700'
+                                      }`}
+                                    >
+                                      {stu.full_name?.charAt(0) || 'S'}
+                                    </div>
+                                    <div className="min-w-0">
+                                      <div className="flex items-center gap-1.5">
+                                        <span className="font-bold text-slate-900 text-xs truncate">{stu.full_name}</span>
+                                        <span className="text-[9px] bg-emerald-100 text-emerald-800 px-1.5 py-0.2 rounded font-bold">
+                                          ✓ Approved
+                                        </span>
+                                      </div>
+                                      <p className="text-[10px] text-slate-500 truncate">
+                                        {stu.technology || 'General'} {stu.email ? `• ${stu.email}` : ''}
+                                      </p>
+                                    </div>
+                                  </div>
 
-                            {/* Action Buttons */}
-                            <div className="flex items-center justify-between pt-1 border-b border-slate-100 pb-2">
+                                  <div className="ml-2 flex-shrink-0">
+                                    {isSelected ? (
+                                      <span className="inline-flex items-center gap-1 bg-blue-600 text-white text-[11px] font-bold px-2 py-0.5 rounded-lg shadow-2xs">
+                                        <Check className="w-3 h-3 stroke-[3]" />
+                                        <span>Selected</span>
+                                      </span>
+                                    ) : (
+                                      <span className="inline-flex items-center gap-1 bg-slate-100 hover:bg-slate-200 text-slate-600 text-[11px] font-semibold px-2 py-0.5 rounded-lg">
+                                        <span>+ Select</span>
+                                      </span>
+                                    )}
+                                  </div>
+                                </button>
+                              );
+                            })}
+                        </div>
+
+                        {/* Selected summary & Quick Actions */}
+                        <div className="flex items-center justify-between text-[11px] pt-1 px-1">
+                          <div>
+                            {selectedNoteUserIds.length === 0 ? (
+                              <span className="text-amber-600 font-semibold">
+                                ⚠️ Please click a student card above to select recipients
+                              </span>
+                            ) : (
+                              <span className="font-bold text-slate-700">
+                                ✓ {selectedNoteUserIds.length} of {students.filter((s) => s.is_approved !== false).length} approved students selected
+                              </span>
+                            )}
+                          </div>
+                          {students.filter((s) => s.is_approved !== false).length > 1 && (
+                            <div className="space-x-3">
                               <button
                                 type="button"
                                 onClick={() => {
-                                  setSelectedNoteUserIds(['all']);
+                                  const approvedList = students.filter((s) => s.is_approved !== false);
+                                  setSelectedNoteUserIds(approvedList.map((s) => s.id));
                                   if (noteErrors.user_id) setNoteErrors((prev) => ({ ...prev, user_id: '' }));
                                 }}
-                                className={`text-[11px] font-bold px-2.5 py-1 rounded-lg transition ${
-                                  selectedNoteUserIds.includes('all')
-                                    ? 'bg-blue-600 text-white'
-                                    : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
-                                }`}
+                                className="text-blue-600 hover:text-blue-700 font-bold hover:underline cursor-pointer"
                               >
-                                ✓ Select All Students
+                                Select All
                               </button>
-                              <button
-                                type="button"
-                                onClick={() => setSelectedNoteUserIds([])}
-                                className="text-[11px] font-semibold text-rose-600 hover:text-rose-700 px-2 py-1"
-                              >
-                                Clear All
-                              </button>
+                              {selectedNoteUserIds.length > 0 && (
+                                <button
+                                  type="button"
+                                  onClick={() => setSelectedNoteUserIds([])}
+                                  className="text-rose-600 hover:text-rose-700 font-bold hover:underline cursor-pointer"
+                                >
+                                  Clear
+                                </button>
+                              )}
                             </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
 
-                            {/* Checkbox List */}
-                            <div className="max-h-48 overflow-y-auto space-y-1 pr-1">
-                              {students
-                                .filter((s) => {
-                                  if (!userSearchTerm.trim()) return true;
-                                  const term = userSearchTerm.toLowerCase();
-                                  return (
-                                    (s.full_name && s.full_name.toLowerCase().includes(term)) ||
-                                    (s.technology && s.technology.toLowerCase().includes(term)) ||
-                                    (s.email && s.email.toLowerCase().includes(term))
-                                  );
-                                })
-                                .map((stu) => {
-                                  const isChecked =
-                                    selectedNoteUserIds.includes('all') ||
-                                    selectedNoteUserIds.includes(stu.id);
-                                  return (
-                                    <label
-                                      key={stu.id}
-                                      className={`flex items-center gap-2.5 p-2 rounded-xl cursor-pointer transition ${
-                                        isChecked
-                                          ? 'bg-blue-50/80 border border-blue-200/80'
-                                          : 'hover:bg-slate-50 border border-transparent'
-                                      }`}
-                                    >
-                                      <input
-                                        type="checkbox"
-                                        checked={isChecked}
-                                        onChange={() => {
-                                          if (noteErrors.user_id) setNoteErrors((prev) => ({ ...prev, user_id: '' }));
-                                          if (selectedNoteUserIds.includes('all')) {
-                                            const allExceptThis = students.map((s) => s.id).filter((id) => id !== stu.id);
-                                            setSelectedNoteUserIds(allExceptThis);
-                                          } else if (selectedNoteUserIds.includes(stu.id)) {
-                                            setSelectedNoteUserIds(selectedNoteUserIds.filter((id) => id !== stu.id));
-                                          } else {
-                                            setSelectedNoteUserIds([...selectedNoteUserIds, stu.id]);
-                                          }
-                                        }}
-                                        className="rounded text-blue-600 focus:ring-blue-500 w-4 h-4 cursor-pointer"
-                                      />
-                                      <div className="flex-1 min-w-0">
-                                        <p className="text-xs font-bold text-slate-800 truncate">{stu.full_name}</p>
-                                        <p className="text-[10px] text-slate-400 truncate">
-                                          {stu.technology ? `Tech: ${stu.technology}` : ''} {stu.email ? `• ${stu.email}` : ''}
-                                        </p>
-                                      </div>
-                                      <span className="text-[10px] bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded font-mono">
-                                        #{stu.id}
-                                      </span>
-                                    </label>
-                                  );
-                                })}
-                            </div>
-
-                            {/* Footer */}
-                            <div className="pt-2 border-t border-slate-100 flex justify-between items-center">
-                              <span className="text-[11px] text-slate-500 font-medium">
-                                {selectedNoteUserIds.includes('all')
-                                  ? 'All students selected'
-                                  : `${selectedNoteUserIds.length} students selected`}
-                              </span>
-                              <button
-                                type="button"
-                                onClick={() => setShowUserDropdown(false)}
-                                className="px-3.5 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold transition shadow-xs"
-                              >
-                                Done
-                              </button>
-                            </div>
-                          </div>
-                        </>
-                      )}
-                    </div>
-                    <div>
-                      <label className="block font-semibold text-slate-700 mb-1">Note Title *</label>
-                      <input
-                        type="text"
-                        placeholder="e.g. Introduction to React Hooks"
-                        value={newNote.title}
-                        onChange={(e) => {
-                          setNewNote({ ...newNote, title: e.target.value });
-                          if (noteErrors.title) setNoteErrors(prev => ({ ...prev, title: '' }));
-                        }}
-                        className={`w-full p-2 border rounded-lg focus:ring-2 font-medium transition ${
-                          noteErrors.title ? 'border-rose-400 bg-rose-50/20 focus:ring-rose-400' : 'border-slate-300 focus:ring-blue-500'
-                        }`}
-                      />
-                      {noteErrors.title && (
-                        <p className="mt-1 text-xs text-rose-600 font-semibold flex items-center gap-1">
-                          <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
-                          <span>{noteErrors.title}</span>
-                        </p>
-                      )}
-                    </div>
+                    {noteErrors.user_id && (
+                      <p className="mt-1 text-xs text-rose-600 font-semibold flex items-center gap-1">
+                        <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
+                        <span>{noteErrors.user_id}</span>
+                      </p>
+                    )}
                   </div>
 
                   <div>

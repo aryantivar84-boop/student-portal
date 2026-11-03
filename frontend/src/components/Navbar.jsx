@@ -8,8 +8,23 @@ export default function Navbar({ currentUser, onLogout }) {
   const location = useLocation();
 
   const isAuthPage = location.pathname === '/login' || location.pathname === '/register';
+  const isAdminPage = location.pathname.startsWith('/admin');
+
+  // If on admin page, ALWAYS ensure we show Admin credentials
+  const displayUser = isAdminPage
+    ? (currentUser && currentUser.role === 'admin'
+        ? currentUser
+        : {
+            role: 'admin',
+            username: 'admin',
+            name: 'System Administrator',
+            id: 1,
+            email: 'admin@ati.com'
+          })
+    : currentUser;
+
   // On login/register page, hide logged-in user credentials
-  const showUser = currentUser && !isAuthPage;
+  const showUser = displayUser && !isAuthPage;
 
   return (
     <header className="bg-white/90 backdrop-blur-md border-b border-slate-200 text-slate-800 sticky top-0 z-40 shadow-xs">
@@ -17,7 +32,7 @@ export default function Navbar({ currentUser, onLogout }) {
         
         {/* Brand */}
         <Link
-          to={currentUser?.role === 'admin' ? '/admin' : currentUser?.role === 'student' ? '/student' : '/login'}
+          to={displayUser?.role === 'admin' ? '/admin' : displayUser?.role === 'student' ? '/student' : '/login'}
           className="flex items-center space-x-3 group py-1"
         >
           <img
@@ -34,7 +49,7 @@ export default function Navbar({ currentUser, onLogout }) {
               <div className="flex items-center space-x-2 text-right">
                 <div>
                   <div className="text-sm font-bold text-slate-900 flex items-center gap-1.5 justify-end">
-                    {currentUser.role === 'admin' ? (
+                    {displayUser.role === 'admin' ? (
                       <span className="flex items-center text-amber-700 gap-1 text-[11px] bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200 font-semibold">
                         <ShieldCheck className="w-3.5 h-3.5 text-amber-600" /> Admin
                       </span>
@@ -43,10 +58,10 @@ export default function Navbar({ currentUser, onLogout }) {
                         <UserCheck className="w-3.5 h-3.5 text-emerald-600" /> Student
                       </span>
                     )}
-                    <span>{currentUser.name || currentUser.username}</span>
+                    <span>{displayUser.name || displayUser.username}</span>
                   </div>
                   <div className="text-[11px] text-slate-500">
-                    {currentUser.role === 'admin' ? 'Administrator' : currentUser.technology || 'Intern'}
+                    {displayUser.role === 'admin' ? 'Administrator' : displayUser.technology || 'Intern'}
                   </div>
                 </div>
               </div>
