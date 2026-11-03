@@ -122,25 +122,21 @@ function AppContent() {
           <Route
             path="/login"
             element={
-              activeUser?.role === 'admin' ? (
-                <Navigate to="/admin" replace />
-              ) : activeUser?.role === 'student' ? (
-                <Navigate to="/student" replace />
-              ) : (
-                <LoginPage onLoginSuccess={handleLoginSuccess} />
-              )
+              <LoginPage
+                currentUser={activeUser}
+                onLogout={handleLogout}
+                onLoginSuccess={handleLoginSuccess}
+              />
             }
           />
           <Route
             path="/register"
             element={
-              activeUser?.role === 'admin' ? (
-                <Navigate to="/admin" replace />
-              ) : activeUser?.role === 'student' ? (
-                <Navigate to="/student" replace />
-              ) : (
-                <LoginPage onLoginSuccess={handleLoginSuccess} />
-              )
+              <LoginPage
+                currentUser={activeUser}
+                onLogout={handleLogout}
+                onLoginSuccess={handleLoginSuccess}
+              />
             }
           />
 

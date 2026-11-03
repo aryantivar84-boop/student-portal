@@ -8,7 +8,7 @@ import {
 } from 'lucide-react';
 import loginBg from '../assets/login_bg.jpg';
 
-export default function LoginPage({ onLoginSuccess }) {
+export default function LoginPage({ currentUser, onLogout, onLoginSuccess }) {
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -390,6 +390,36 @@ export default function LoginPage({ onLoginSuccess }) {
 
         <div className="p-6 sm:p-8">
           
+          {/* Active Session Notification if already logged in */}
+          {currentUser && (
+            <div className="mb-5 p-3.5 bg-blue-50/90 border border-blue-200 rounded-2xl flex flex-wrap items-center justify-between gap-2.5 shadow-2xs">
+              <div className="flex items-center gap-2 overflow-hidden">
+                <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse flex-shrink-0"></span>
+                <p className="text-xs text-blue-950 font-medium truncate">
+                  Active session: <strong className="font-bold text-blue-900">{currentUser.name || currentUser.username}</strong> ({currentUser.role === 'admin' ? 'Administrator' : 'Student'})
+                </p>
+              </div>
+              <div className="flex items-center gap-1.5 flex-shrink-0 ml-auto">
+                <Link
+                  to={currentUser.role === 'admin' ? '/admin' : '/student'}
+                  className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold transition flex items-center gap-1 shadow-2xs"
+                >
+                  <span>Open {currentUser.role === 'admin' ? 'Admin' : 'Student'} Dashboard</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </Link>
+                {onLogout && (
+                  <button
+                    type="button"
+                    onClick={onLogout}
+                    className="px-2.5 py-1.5 bg-white hover:bg-rose-50 text-rose-600 border border-rose-200 rounded-lg text-xs font-bold transition cursor-pointer"
+                  >
+                    Logout
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
+
           {/* Notification Banners */}
           {error && (
             <div className="mb-5 bg-rose-50 border border-rose-200 text-rose-700 px-4 py-3 rounded-xl text-xs font-semibold flex items-start gap-2.5">
