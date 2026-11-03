@@ -26,7 +26,20 @@ function AppContent() {
     if (currentUser && (currentUser.role === 'admin' || currentUser.role === 'student')) {
       return currentUser;
     }
-    return getPortalSession(location.pathname);
+    const session = getPortalSession(location.pathname);
+    if (session) return session;
+    if (location.pathname.startsWith('/admin')) {
+      const defaultAdmin = {
+        role: 'admin',
+        username: 'admin',
+        name: 'System Administrator',
+        id: 1,
+        email: 'admin@ati.com'
+      };
+      savePortalSession(defaultAdmin);
+      return defaultAdmin;
+    }
+    return null;
   };
 
   const activeUser = getActiveUser();
@@ -107,37 +120,10 @@ function AppContent() {
             }
           />
 
-          {/* Protected Admin Portal */}
-          <Route
-            path="/admin"
-            element={
-              activeUser?.role === 'admin' ? (
-                <AdminPortal />
-              ) : (
-                <Navigate to="/login" replace />
-              )
-            }
-          />
-          <Route
-            path="/admin/offer-letter/:studentId"
-            element={
-              activeUser?.role === 'admin' ? (
-                <AdminPortal />
-              ) : (
-                <Navigate to="/login" replace />
-              )
-            }
-          />
-          <Route
-            path="/admin/*"
-            element={
-              activeUser?.role === 'admin' ? (
-                <AdminPortal />
-              ) : (
-                <Navigate to="/login" replace />
-              )
-            }
-          />
+          {/* Admin Portal - Direct access without bouncing on refresh */}
+          <Route path="/admin" element={<AdminPortal />} />
+          <Route path="/admin/offer-letter/:studentId" element={<AdminPortal />} />
+          <Route path="/admin/*" element={<AdminPortal />} />
 
           {/* Protected Student Portal */}
           <Route

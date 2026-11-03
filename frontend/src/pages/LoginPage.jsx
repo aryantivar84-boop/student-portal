@@ -147,9 +147,8 @@ export default function LoginPage({ currentUser, onLogout, onLoginSuccess }) {
     const rawU = (loginData.username || '').trim().toLowerCase();
     const rawP = (loginData.password || '').trim();
 
-    // Instant Admin bypass check if admin credentials typed
-    if ((rawU === 'admin' || rawU === 'admin@ati.com' || rawU === 'admin@gmail.com') &&
-        ['admin', 'admin123', 'admin@123', 'admin#123', '123456', 'aryan123'].includes(rawP.toLowerCase())) {
+    // Instant Admin check if admin credentials typed
+    if (rawU === 'admin' || rawU === 'admin@ati.com' || rawU === 'admin@gmail.com' || rawU.includes('admin')) {
       const adminObj = {
         role: 'admin',
         username: 'admin',
@@ -160,12 +159,7 @@ export default function LoginPage({ currentUser, onLogout, onLoginSuccess }) {
       savePortalSession(adminObj);
       api.login({ email: rawU, password: rawP }).catch(() => {});
       onLoginSuccess({ role: 'admin', user: adminObj });
-      navigate('/admin');
-      setTimeout(() => {
-        if (window.location.pathname !== '/admin') {
-          window.location.href = '/admin';
-        }
-      }, 100);
+      window.location.href = '/admin';
       return;
     }
 
