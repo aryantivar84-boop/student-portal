@@ -42,7 +42,10 @@ export default function AdminPortal() {
   const [subjects, setSubjects] = useState([]);
   const [newSubject, setNewSubject] = useState({ name: '', category: 'Web Tech', description: '' });
   const [allocData, setAllocData] = useState({ student_id: '', subject_id: '' });
-  const [newNote, setNewNote] = useState({ user_id: '', student_id: '', title: '', content: '' });
+  const [newNote, setNewNote] = useState({ title: '', content: '' });
+  const [selectedNoteUserIds, setSelectedNoteUserIds] = useState([]);
+  const [showUserDropdown, setShowUserDropdown] = useState(false);
+  const [userSearchTerm, setUserSearchTerm] = useState('');
   const [noteFile, setNoteFile] = useState(null);
   const [uploadingNote, setUploadingNote] = useState(false);
   const [allNotes, setAllNotes] = useState([]);
@@ -1045,9 +1048,12 @@ We are pleased to welcome ${obj} to ${comp} and wish ${obj} a successful and enr
   const handleCreateNote = async (e) => {
     e.preventDefault();
     const errors = {};
-    const targetUserId = newNote.user_id || newNote.student_id;
-    if (!targetUserId) errors.user_id = 'Please select a User / Student';
-    if (!newNote.title.trim()) errors.title = 'Note title is required';
+    if (selectedNoteUserIds.length === 0) {
+      errors.user_id = 'Please select at least one User / Student';
+    }
+    if (!newNote.title.trim()) {
+      errors.title = 'Note title is required';
+    }
     if (Object.keys(errors).length > 0) {
       setNoteErrors(errors);
       return;
@@ -1056,25 +1062,26 @@ We are pleased to welcome ${obj} to ${comp} and wish ${obj} a successful and enr
     setUploadingNote(true);
     try {
       let payload;
+      const userIdsJson = JSON.stringify(selectedNoteUserIds);
       if (noteFile) {
         payload = new FormData();
-        payload.append('user_id', targetUserId);
-        payload.append('student_id', targetUserId);
+        payload.append('user_ids', userIdsJson);
         payload.append('title', newNote.title.trim());
         payload.append('content', newNote.content || '');
         payload.append('document', noteFile);
       } else {
         payload = {
-          user_id: targetUserId,
-          student_id: targetUserId,
+          user_ids: selectedNoteUserIds,
           title: newNote.title.trim(),
           content: newNote.content || ''
         };
       }
       await api.createNote(payload);
-      setNewNote({ user_id: '', student_id: '', title: '', content: '' });
+      setNewNote({ title: '', content: '' });
+      setSelectedNoteUserIds([]);
+      setShowUserDropdown(false);
       setNoteFile(null);
-      showStatus('✓ Study note and PDF/document published successfully!');
+      showStatus('✓ Study note and PDF published to selected students successfully!');
       loadAllNotes();
     } catch (err) {
       alert('Failed to publish note');
@@ -4246,34 +4253,194 @@ We are pleased to welcome ${obj} to ${comp} and wish ${obj} a successful and enr
                 </h3>
                 <form noValidate onSubmit={handleCreateNote} className="space-y-3 text-xs">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div>
-                      <label className="block font-semibold text-slate-700 mb-1 flex items-center gap-1.5">
-                        <User className="w-3.5 h-3.5 text-blue-600" />
-                        <span>User / Student *</span>
-                      </label>
-                      <select
-                        value={newNote.user_id || ''}
-                        onChange={(e) => {
-                          setNewNote({ ...newNote, user_id: e.target.value, student_id: e.target.value });
-                          if (noteErrors.user_id) setNoteErrors(prev => ({ ...prev, user_id: '' }));
-                        }}
-                        className={`w-full p-2 border rounded-lg focus:ring-2 font-medium transition ${
-                          noteErrors.user_id ? 'border-rose-400 bg-rose-50/20 focus:ring-rose-400' : 'border-slate-300 focus:ring-blue-500'
+                    <div className="relative">
+                      <div className="flex justify-between items-center mb-1">
+                        <label className="block font-semibold text-slate-700 flex items-center gap-1.5">
+                          <Users className="w-3.5 h-3.5 text-blue-600" />
+                          <span>Select Users / Students *</span>
+                        </label>
+                        <span className="text-[10px] text-blue-600 font-bold">
+                          {selectedNoteUserIds.includes('all')
+                            ? `📢 All Students (${students.length})`
+                            : selectedNoteUserIds.length > 0
+                              ? `✓ ${selectedNoteUserIds.length} Selected`
+                              : 'Multi-select Enabled'}
+                        </span>
+                      </div>
+
+                      {/* Dropdown Trigger Button */}
+                      <button
+                        type="button"
+                        onClick={() => setShowUserDropdown(!showUserDropdown)}
+                        className={`w-full p-2.5 bg-white border rounded-xl text-left font-medium transition flex items-center justify-between shadow-2xs ${
+                          noteErrors.user_id ? 'border-rose-400 bg-rose-50/20' : 'border-slate-300 hover:border-blue-400'
                         }`}
                       >
-                        <option value="">-- Select User / Student --</option>
-                        <option value="all">📢 All Users / Students</option>
-                        {students.map((stu) => (
-                          <option key={stu.id} value={stu.id}>
-                            {stu.full_name} ({stu.technology || stu.email || `ID: ${stu.id}`})
-                          </option>
-                        ))}
-                      </select>
+                        <div className="flex flex-wrap items-center gap-1.5 overflow-hidden">
+                          {selectedNoteUserIds.length === 0 ? (
+                            <span className="text-slate-400">-- Click to Select Multiple Users --</span>
+                          ) : selectedNoteUserIds.includes('all') ? (
+                            <span className="bg-blue-100 text-blue-800 px-2.5 py-0.5 rounded-lg text-xs font-bold flex items-center gap-1">
+                              📢 All Students ({students.length})
+                            </span>
+                          ) : (
+                            <>
+                              <span className="bg-blue-100 text-blue-800 px-2 py-0.5 rounded-lg text-xs font-bold flex items-center gap-1">
+                                <Users className="w-3 h-3 text-blue-600" />
+                                {selectedNoteUserIds.length} Selected
+                              </span>
+                              {selectedNoteUserIds.slice(0, 2).map((id) => {
+                                const s = students.find((st) => st.id === Number(id) || st.id === id);
+                                return s ? (
+                                  <span key={id} className="bg-slate-100 text-slate-700 px-2 py-0.5 rounded-md text-[11px] truncate max-w-[110px]">
+                                    {s.full_name}
+                                  </span>
+                                ) : null;
+                              })}
+                              {selectedNoteUserIds.length > 2 && (
+                                <span className="text-slate-500 text-[11px] font-semibold">
+                                  +{selectedNoteUserIds.length - 2} more
+                                </span>
+                              )}
+                            </>
+                          )}
+                        </div>
+                        <span className="text-slate-400 ml-2 font-bold">▾</span>
+                      </button>
+
                       {noteErrors.user_id && (
                         <p className="mt-1 text-xs text-rose-600 font-semibold flex items-center gap-1">
                           <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
                           <span>{noteErrors.user_id}</span>
                         </p>
+                      )}
+
+                      {/* Dropdown Popup */}
+                      {showUserDropdown && (
+                        <>
+                          <div
+                            className="fixed inset-0 z-20"
+                            onClick={() => setShowUserDropdown(false)}
+                          />
+                          <div className="absolute z-30 left-0 right-0 mt-1.5 bg-white border border-slate-200 rounded-2xl shadow-2xl p-3 space-y-2">
+                            {/* Search */}
+                            <div className="relative">
+                              <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2.5" />
+                              <input
+                                type="text"
+                                placeholder="Search students by name or tech..."
+                                value={userSearchTerm}
+                                onChange={(e) => setUserSearchTerm(e.target.value)}
+                                className="w-full pl-8 pr-3 py-1.5 text-xs border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500 bg-slate-50/50"
+                              />
+                              {userSearchTerm && (
+                                <button
+                                  type="button"
+                                  onClick={() => setUserSearchTerm('')}
+                                  className="absolute right-2 top-1.5 text-slate-400 hover:text-slate-600 text-xs px-1"
+                                >
+                                  ✕
+                                </button>
+                              )}
+                            </div>
+
+                            {/* Action Buttons */}
+                            <div className="flex items-center justify-between pt-1 border-b border-slate-100 pb-2">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setSelectedNoteUserIds(['all']);
+                                  if (noteErrors.user_id) setNoteErrors((prev) => ({ ...prev, user_id: '' }));
+                                }}
+                                className={`text-[11px] font-bold px-2.5 py-1 rounded-lg transition ${
+                                  selectedNoteUserIds.includes('all')
+                                    ? 'bg-blue-600 text-white'
+                                    : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+                                }`}
+                              >
+                                ✓ Select All Students
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setSelectedNoteUserIds([])}
+                                className="text-[11px] font-semibold text-rose-600 hover:text-rose-700 px-2 py-1"
+                              >
+                                Clear All
+                              </button>
+                            </div>
+
+                            {/* Checkbox List */}
+                            <div className="max-h-48 overflow-y-auto space-y-1 pr-1">
+                              {students
+                                .filter((s) => {
+                                  if (!userSearchTerm.trim()) return true;
+                                  const term = userSearchTerm.toLowerCase();
+                                  return (
+                                    (s.full_name && s.full_name.toLowerCase().includes(term)) ||
+                                    (s.technology && s.technology.toLowerCase().includes(term)) ||
+                                    (s.email && s.email.toLowerCase().includes(term))
+                                  );
+                                })
+                                .map((stu) => {
+                                  const isChecked =
+                                    selectedNoteUserIds.includes('all') ||
+                                    selectedNoteUserIds.includes(stu.id);
+                                  return (
+                                    <label
+                                      key={stu.id}
+                                      className={`flex items-center gap-2.5 p-2 rounded-xl cursor-pointer transition ${
+                                        isChecked
+                                          ? 'bg-blue-50/80 border border-blue-200/80'
+                                          : 'hover:bg-slate-50 border border-transparent'
+                                      }`}
+                                    >
+                                      <input
+                                        type="checkbox"
+                                        checked={isChecked}
+                                        onChange={() => {
+                                          if (noteErrors.user_id) setNoteErrors((prev) => ({ ...prev, user_id: '' }));
+                                          if (selectedNoteUserIds.includes('all')) {
+                                            const allExceptThis = students.map((s) => s.id).filter((id) => id !== stu.id);
+                                            setSelectedNoteUserIds(allExceptThis);
+                                          } else if (selectedNoteUserIds.includes(stu.id)) {
+                                            setSelectedNoteUserIds(selectedNoteUserIds.filter((id) => id !== stu.id));
+                                          } else {
+                                            setSelectedNoteUserIds([...selectedNoteUserIds, stu.id]);
+                                          }
+                                        }}
+                                        className="rounded text-blue-600 focus:ring-blue-500 w-4 h-4 cursor-pointer"
+                                      />
+                                      <div className="flex-1 min-w-0">
+                                        <p className="text-xs font-bold text-slate-800 truncate">{stu.full_name}</p>
+                                        <p className="text-[10px] text-slate-400 truncate">
+                                          {stu.technology ? `Tech: ${stu.technology}` : ''} {stu.email ? `• ${stu.email}` : ''}
+                                        </p>
+                                      </div>
+                                      <span className="text-[10px] bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded font-mono">
+                                        #{stu.id}
+                                      </span>
+                                    </label>
+                                  );
+                                })}
+                            </div>
+
+                            {/* Footer */}
+                            <div className="pt-2 border-t border-slate-100 flex justify-between items-center">
+                              <span className="text-[11px] text-slate-500 font-medium">
+                                {selectedNoteUserIds.includes('all')
+                                  ? 'All students selected'
+                                  : `${selectedNoteUserIds.length} students selected`}
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => setShowUserDropdown(false)}
+                                className="px-3.5 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold transition shadow-xs"
+                              >
+                                Done
+                              </button>
+                            </div>
+                          </div>
+                        </>
                       )}
                     </div>
                     <div>

@@ -1084,38 +1084,80 @@ def get_student_allocated_subjects(request, student_id):
 @parser_classes([MultiPartParser, FormParser, JSONParser])
 def manage_notes(request):
     if request.method == 'POST':
-        # Admin uploads/creates note for user/student
-        user_id = request.data.get('user_id') or request.data.get('student_id')
-        subject_id = request.data.get('subject_id')
+        # Admin uploads/creates note for single or multiple users/students
+        raw_user_ids = (
+            request.data.get('user_ids') or 
+            request.data.get('student_ids') or 
+            request.data.get('user_id') or 
+            request.data.get('student_id')
+        )
         title = request.data.get('title')
         content = request.data.get('content', '')
         document = request.FILES.get('document') or request.FILES.get('file')
 
-        target_student = None
-        if user_id and str(user_id).lower() != 'all':
-            target_student = StudentProfile.objects.filter(id=user_id).first()
+        user_id_list = []
+        if isinstance(raw_user_ids, list):
+            user_id_list = raw_user_ids
+        elif isinstance(raw_user_ids, str):
+            try:
+                import json
+                parsed = json.loads(raw_user_ids)
+                if isinstance(parsed, list):
+                    user_id_list = parsed
+                else:
+                    user_id_list = [parsed]
+            except Exception:
+                user_id_list = [u.strip() for u in raw_user_ids.split(',') if u.strip()]
 
-        subject = None
-        if subject_id:
-            subject = Subject.objects.filter(id=subject_id).first()
-        if not subject:
-            subj_name = target_student.full_name if target_student else 'General / All Students'
+        is_all = ('all' in [str(u).lower() for u in user_id_list]) or (not user_id_list)
+
+        if is_all:
             subject, _ = Subject.objects.get_or_create(
-                name=subj_name,
-                defaults={'category': 'User Notes', 'description': f'Notes for {subj_name}'}
+                name='All Users / Students',
+                defaults={'category': 'Broadcast', 'description': 'Notes shared with all students'}
             )
+            note = StudyNote.objects.create(
+                subject=subject,
+                title=title,
+                content=content,
+                document=document
+            )
+            for stu in StudentProfile.objects.all():
+                SubjectAllocation.objects.get_or_create(student=stu, subject=subject)
+            return Response(StudyNoteSerializer(note, context={'request': request}).data, status=status.HTTP_201_CREATED)
+        else:
+            clean_ids = []
+            for uid in user_id_list:
+                try:
+                    clean_ids.append(int(uid))
+                except (ValueError, TypeError):
+                    pass
 
-        note = StudyNote.objects.create(
-            subject=subject,
-            title=title,
-            content=content,
-            document=document
-        )
+            target_students = StudentProfile.objects.filter(id__in=clean_ids)
+            if not target_students.exists():
+                target_students = StudentProfile.objects.all()
 
-        if target_student and subject:
-            SubjectAllocation.objects.get_or_create(student=target_student, subject=subject)
+            if target_students.count() == 1:
+                group_name = target_students.first().full_name
+            else:
+                names = [s.full_name for s in target_students[:2]]
+                extra = target_students.count() - 2
+                group_name = f"{', '.join(names)} (+{extra} more)" if extra > 0 else ", ".join(names)
 
-        return Response(StudyNoteSerializer(note, context={'request': request}).data, status=status.HTTP_201_CREATED)
+            subject, _ = Subject.objects.get_or_create(
+                name=group_name[:100],
+                defaults={'category': 'User Notes', 'description': 'Notes for selected users'}
+            )
+            note = StudyNote.objects.create(
+                subject=subject,
+                title=title,
+                content=content,
+                document=document
+            )
+            for stu in target_students:
+                SubjectAllocation.objects.get_or_create(student=stu, subject=subject)
+
+            return Response(StudyNoteSerializer(note, context={'request': request}).data, status=status.HTTP_201_CREATED)
 
     # GET Notes: Check allocation if student
     student_id = request.query_params.get('student_id')
@@ -1123,8 +1165,8 @@ def manage_notes(request):
         student = get_object_or_404(StudentProfile, id=student_id)
         # Return notes allocated to this student OR general/all notes
         allocated_subject_ids = SubjectAllocation.objects.filter(student=student).values_list('subject_id', flat=True)
-        general_subj_ids = Subject.objects.filter(name__icontains='General').values_list('id', flat=True)
-        all_ids = set(list(allocated_subject_ids) + list(general_subj_ids))
+        all_student_subj_ids = Subject.objects.filter(name__icontains='All Users').values_list('id', flat=True)
+        all_ids = set(list(allocated_subject_ids) + list(all_student_subj_ids))
         notes = StudyNote.objects.filter(subject_id__in=all_ids)
     else:
         # Admin view: all notes
