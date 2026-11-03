@@ -26,17 +26,29 @@ export default function AdminPortal() {
   const [loadingStudents, setLoadingStudents] = useState(false);
   const [bulkVerifying, setBulkVerifying] = useState(false);
 
+  // Helper: Get Current Year-Month (e.g. '2026-11') dynamically
+  const getCurrentMonth = () => {
+    const d = new Date();
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    return `${year}-${month}`;
+  };
+
   // Attendance & Reports Monitor (Filtered by Month & Student)
   const [attendanceRecords, setAttendanceRecords] = useState([]);
   const [dailyReports, setDailyReports] = useState([]);
   const [attendanceDailyReport, setAttendanceDailyReport] = useState({ summary: {}, daily_records: [] });
   const [attendanceViewMode, setAttendanceViewMode] = useState('register'); // 'register', 'sessions', 'reports'
   const [filterAttendanceStatus, setFilterAttendanceStatus] = useState('all'); // 'all', 'present', 'absent', 'weekend', 'upcoming'
-  const [filterMonth, setFilterMonth] = useState('2026-10');
+  const [filterMonth, setFilterMonth] = useState(getCurrentMonth);
   const [filterStudentId, setFilterStudentId] = useState('');
   const [loadingAttendance, setLoadingAttendance] = useState(false);
   const [attendanceSortAsc, setAttendanceSortAsc] = useState(false); // false = latest date first
   const [attendanceSearch, setAttendanceSearch] = useState('');
+
+  // Live Attendance Pop-up Notification State
+  const [liveClockAlert, setLiveClockAlert] = useState(null);
+  const prevClockStateRef = React.useRef({});
 
   // Subject Allocation & Notes
   const [subjects, setSubjects] = useState([]);
@@ -101,6 +113,106 @@ export default function AdminPortal() {
     loadNews();
     loadHolidays();
   }, []);
+
+  // Soft notification sound when a student clocks in / out
+  const playClockChime = () => {
+    try {
+      const AudioCtx = window.AudioContext || window.webkitAudioContext;
+      if (!AudioCtx) return;
+      const ctx = new AudioCtx();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(587.33, ctx.currentTime);
+      osc.frequency.setValueAtTime(880, ctx.currentTime + 0.12);
+      gain.gain.setValueAtTime(0.15, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.5);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.5);
+    } catch (e) {}
+  };
+
+  // Live polling: Checks every 5s for student Clock-In or Clock-Out to trigger Admin pop-up
+  useEffect(() => {
+    let isMounted = true;
+    const checkLiveAttendance = async () => {
+      try {
+        const todayStr = new Date().toISOString().split('T')[0];
+        const records = await api.getAdminAttendance({ date: todayStr });
+        if (!records || !Array.isArray(records) || !isMounted) return;
+
+        const currentMap = {};
+        records.forEach((r) => {
+          if (r.student_id) {
+            currentMap[r.student_id] = {
+              name: r.student_name || 'Student',
+              tech: r.technology || '',
+              clock_in: r.clock_in,
+              clock_out: r.clock_out,
+              is_clocked_in: r.is_clocked_in,
+              time: r.clock_in ? new Date(r.clock_in).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Today'
+            };
+          }
+        });
+
+        const prevMap = prevClockStateRef.current;
+        if (Object.keys(prevMap).length > 0) {
+          for (const [id, cur] of Object.entries(currentMap)) {
+            const prev = prevMap[id];
+            if ((!prev || !prev.is_clocked_in) && cur.is_clocked_in) {
+              setLiveClockAlert({
+                type: 'clock_in',
+                title: '⚡ Student Clocked In!',
+                studentName: cur.name,
+                technology: cur.tech,
+                studentId: id,
+                time: cur.time,
+                message: `${cur.name} has clocked in and started their timer!`
+              });
+              playClockChime();
+              loadAttendanceAndReports();
+              break;
+            } else if (prev && prev.is_clocked_in && !cur.is_clocked_in && cur.clock_out) {
+              setLiveClockAlert({
+                type: 'clock_out',
+                title: '🛑 Student Clocked Out',
+                studentName: cur.name,
+                technology: cur.tech,
+                studentId: id,
+                time: cur.time,
+                message: `${cur.name} has clocked out for today.`
+              });
+              playClockChime();
+              loadAttendanceAndReports();
+              break;
+            }
+          }
+        }
+        prevClockStateRef.current = currentMap;
+      } catch (e) {
+        // Silent polling error
+      }
+    };
+
+    checkLiveAttendance();
+    const interval = setInterval(checkLiveAttendance, 5000);
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+    };
+  }, []);
+
+  // Auto-dismiss alert pop-up after 8 seconds
+  useEffect(() => {
+    if (liveClockAlert) {
+      const timer = setTimeout(() => {
+        setLiveClockAlert(null);
+      }, 8000);
+      return () => clearTimeout(timer);
+    }
+  }, [liveClockAlert]);
 
   const loadHolidays = async () => {
     try {
@@ -2259,7 +2371,61 @@ We are pleased to welcome ${obj} to ${comp} and wish ${obj} a successful and enr
   }
 
   return (
-    <div className="min-h-[calc(100vh-4rem)] flex flex-col md:flex-row bg-slate-100">
+    <div className="min-h-[calc(100vh-4rem)] flex flex-col md:flex-row bg-slate-100 relative">
+      
+      {/* Live Student Attendance Clock-In / Clock-Out Pop-up Alert */}
+      {liveClockAlert && (
+        <div className="fixed top-6 right-6 z-50 max-w-sm w-full bg-white border-2 border-emerald-500 rounded-2xl shadow-2xl p-4 animate-in slide-in-from-top-4 duration-300">
+          <div className="flex items-start gap-3">
+            <div className={`p-2.5 rounded-xl flex-shrink-0 ${liveClockAlert.type === 'clock_in' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
+              <Clock className="w-5 h-5 animate-pulse" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center justify-between">
+                <span className={`text-[10px] font-bold tracking-wider uppercase px-2 py-0.5 rounded-full border ${
+                  liveClockAlert.type === 'clock_in' 
+                    ? 'bg-emerald-50 text-emerald-700 border-emerald-200' 
+                    : 'bg-amber-50 text-amber-700 border-amber-200'
+                }`}>
+                  {liveClockAlert.type === 'clock_in' ? '🟢 Clocked In' : '🔴 Clocked Out'}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setLiveClockAlert(null)}
+                  className="text-slate-400 hover:text-slate-600 p-0.5 rounded-md hover:bg-slate-100 transition cursor-pointer"
+                  title="Close Alert"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+              <h4 className="text-sm font-bold text-slate-900 mt-1 truncate">
+                {liveClockAlert.studentName}
+              </h4>
+              <p className="text-xs text-slate-600 mt-0.5 leading-relaxed">
+                {liveClockAlert.message}
+              </p>
+              <div className="flex items-center justify-between mt-3 pt-2.5 border-t border-slate-100">
+                <span className="text-[11px] text-slate-400 font-medium">
+                  🕒 {liveClockAlert.time}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveTab('attendance');
+                    setFilterStudentId(liveClockAlert.studentId);
+                    setFilterMonth(getCurrentMonth());
+                    setLiveClockAlert(null);
+                  }}
+                  className="text-xs font-bold text-blue-600 hover:text-blue-800 flex items-center gap-1 cursor-pointer"
+                >
+                  <span>View Register</span>
+                  <ChevronRight className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
       
       {/* ======================================================== */}
       {/* MODERN LEFT SIDEBAR NAVIGATION */}
@@ -3119,10 +3285,10 @@ We are pleased to welcome ${obj} to ${comp} and wish ${obj} a successful and enr
                     </span>
                   </button>
 
-                  {(filterMonth !== '2026-10' || filterStudentId) && (
+                  {(filterMonth !== getCurrentMonth() || filterStudentId) && (
                     <button
-                      onClick={() => { setFilterMonth('2026-10'); setFilterStudentId(''); }}
-                      className="text-xs text-rose-600 hover:text-rose-800 font-bold underline px-2"
+                      onClick={() => { setFilterMonth(getCurrentMonth()); setFilterStudentId(''); }}
+                      className="text-xs text-rose-600 hover:text-rose-800 font-bold underline px-2 cursor-pointer"
                     >
                       Reset Filters
                     </button>

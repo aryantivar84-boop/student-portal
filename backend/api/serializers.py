@@ -245,6 +245,7 @@ class BreakLogSerializer(serializers.ModelSerializer):
 class AttendanceSerializer(serializers.ModelSerializer):
     breaks = BreakLogSerializer(many=True, read_only=True)
     student_name = serializers.CharField(source='student.full_name', read_only=True)
+    technology = serializers.CharField(source='student.technology', read_only=True)
 
     class Meta:
         model = Attendance
