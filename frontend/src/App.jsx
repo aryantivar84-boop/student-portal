@@ -38,6 +38,25 @@ function AppContent() {
     }
   }, [currentUser]);
 
+  // Read directly from state or storage to prevent race condition bounce-backs on login
+  const getActiveUser = () => {
+    if (currentUser && (currentUser.role === 'admin' || currentUser.role === 'student')) {
+      return currentUser;
+    }
+    try {
+      const saved = localStorage.getItem('portal_user') || sessionStorage.getItem('portal_user');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed && (parsed.role === 'admin' || parsed.role === 'student')) {
+          return parsed;
+        }
+      }
+    } catch (e) {}
+    return null;
+  };
+
+  const activeUser = getActiveUser();
+
   const handleLoginSuccess = (data) => {
     let userObj;
     if (data.role === 'admin') {
@@ -78,7 +97,7 @@ function AppContent() {
     <div className="min-h-screen bg-slate-50 text-slate-800 flex flex-col font-sans">
       {!isAuthPage && (
         <Navbar
-          currentUser={currentUser}
+          currentUser={activeUser}
           onLogout={handleLogout}
         />
       )}
@@ -89,9 +108,9 @@ function AppContent() {
           <Route
             path="/"
             element={
-              currentUser?.role === 'admin' ? (
+              activeUser?.role === 'admin' ? (
                 <Navigate to="/admin" replace />
-              ) : currentUser?.role === 'student' ? (
+              ) : activeUser?.role === 'student' ? (
                 <Navigate to="/student" replace />
               ) : (
                 <Navigate to="/login" replace />
@@ -102,18 +121,34 @@ function AppContent() {
           {/* Dedicated Login & Registration Routes */}
           <Route
             path="/login"
-            element={<LoginPage onLoginSuccess={handleLoginSuccess} />}
+            element={
+              activeUser?.role === 'admin' ? (
+                <Navigate to="/admin" replace />
+              ) : activeUser?.role === 'student' ? (
+                <Navigate to="/student" replace />
+              ) : (
+                <LoginPage onLoginSuccess={handleLoginSuccess} />
+              )
+            }
           />
           <Route
             path="/register"
-            element={<LoginPage onLoginSuccess={handleLoginSuccess} />}
+            element={
+              activeUser?.role === 'admin' ? (
+                <Navigate to="/admin" replace />
+              ) : activeUser?.role === 'student' ? (
+                <Navigate to="/student" replace />
+              ) : (
+                <LoginPage onLoginSuccess={handleLoginSuccess} />
+              )
+            }
           />
 
           {/* Protected Admin Portal */}
           <Route
             path="/admin"
             element={
-              currentUser?.role === 'admin' ? (
+              activeUser?.role === 'admin' ? (
                 <AdminPortal />
               ) : (
                 <Navigate to="/login" replace />
@@ -123,7 +158,7 @@ function AppContent() {
           <Route
             path="/admin/offer-letter/:studentId"
             element={
-              currentUser?.role === 'admin' ? (
+              activeUser?.role === 'admin' ? (
                 <AdminPortal />
               ) : (
                 <Navigate to="/login" replace />
@@ -133,7 +168,7 @@ function AppContent() {
           <Route
             path="/admin/*"
             element={
-              currentUser?.role === 'admin' ? (
+              activeUser?.role === 'admin' ? (
                 <AdminPortal />
               ) : (
                 <Navigate to="/login" replace />
@@ -145,11 +180,11 @@ function AppContent() {
           <Route
             path="/student"
             element={
-              currentUser?.role === 'student' ? (
+              activeUser?.role === 'student' ? (
                 <StudentPortal
-                  student={currentUser}
+                  student={activeUser}
                   onRefreshProfile={(updated) => {
-                    const newObj = { ...currentUser, ...updated };
+                    const newObj = { ...activeUser, ...updated };
                     try {
                       localStorage.setItem('portal_user', JSON.stringify(newObj));
                       sessionStorage.setItem('portal_user', JSON.stringify(newObj));
@@ -165,11 +200,11 @@ function AppContent() {
           <Route
             path="/student/*"
             element={
-              currentUser?.role === 'student' ? (
+              activeUser?.role === 'student' ? (
                 <StudentPortal
-                  student={currentUser}
+                  student={activeUser}
                   onRefreshProfile={(updated) => {
-                    const newObj = { ...currentUser, ...updated };
+                    const newObj = { ...activeUser, ...updated };
                     try {
                       localStorage.setItem('portal_user', JSON.stringify(newObj));
                       sessionStorage.setItem('portal_user', JSON.stringify(newObj));
@@ -187,9 +222,9 @@ function AppContent() {
           <Route
             path="*"
             element={
-              currentUser?.role === 'admin' ? (
+              activeUser?.role === 'admin' ? (
                 <Navigate to="/admin" replace />
-              ) : currentUser?.role === 'student' ? (
+              ) : activeUser?.role === 'student' ? (
                 <Navigate to="/student" replace />
               ) : (
                 <Navigate to="/login" replace />
