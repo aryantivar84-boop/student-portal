@@ -7,6 +7,7 @@ import {
   AlertCircle, MapPin, Camera, Upload, X, Eye, EyeOff
 } from 'lucide-react';
 import loginBg from '../assets/login_bg.jpg';
+import { savePortalSession } from '../utils/session';
 
 export default function LoginPage({ currentUser, onLogout, onLoginSuccess }) {
   const navigate = useNavigate();
@@ -156,10 +157,7 @@ export default function LoginPage({ currentUser, onLogout, onLoginSuccess }) {
         id: 1,
         email: 'admin@ati.com'
       };
-      try {
-        localStorage.setItem('portal_user', JSON.stringify(adminObj));
-        sessionStorage.setItem('portal_user', JSON.stringify(adminObj));
-      } catch (e) {}
+      savePortalSession(adminObj);
       api.login({ email: rawU, password: rawP }).catch(() => {});
       onLoginSuccess({ role: 'admin', user: adminObj });
       navigate('/admin');
@@ -178,9 +176,10 @@ export default function LoginPage({ currentUser, onLogout, onLoginSuccess }) {
         if (res.data.role === 'admin') {
           userObj = {
             role: 'admin',
-            username: res.data.user.username,
+            username: res.data.user?.username || 'admin',
             name: 'System Administrator',
-            id: res.data.user.id
+            id: res.data.user?.id || 1,
+            email: res.data.user?.email || 'admin@ati.com'
           };
         } else {
           userObj = {
@@ -190,12 +189,7 @@ export default function LoginPage({ currentUser, onLogout, onLoginSuccess }) {
             name: res.data.profile.full_name
           };
         }
-        try {
-          localStorage.setItem('portal_user', JSON.stringify(userObj));
-          sessionStorage.setItem('portal_user', JSON.stringify(userObj));
-        } catch (storageErr) {
-          console.error('Storage write error:', storageErr);
-        }
+        savePortalSession(userObj);
         onLoginSuccess(res.data);
         if (res.data.role === 'admin') {
           navigate('/admin');

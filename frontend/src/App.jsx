@@ -4,55 +4,29 @@ import Navbar from './components/Navbar';
 import LoginPage from './pages/LoginPage';
 import StudentPortal from './components/StudentPortal';
 import AdminPortal from './components/AdminPortal';
+import { savePortalSession, getPortalSession, clearPortalSession } from './utils/session';
 
 function AppContent() {
   const navigate = useNavigate();
   const location = useLocation();
   const isAuthPage = location.pathname === '/login' || location.pathname === '/register';
 
-  // Safely restore persistent user from localStorage or sessionStorage
-  const [currentUser, setCurrentUser] = useState(() => {
-    try {
-      const saved = localStorage.getItem('portal_user') || sessionStorage.getItem('portal_user');
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (parsed && (parsed.role === 'admin' || parsed.role === 'student')) {
-          return parsed;
-        }
-      }
-    } catch (e) {
-      console.error('Error reading portal_user from storage:', e);
-    }
-    return null;
-  });
+  // Safely restore persistent user with multi-tier storage support (localStorage, sessionStorage, cookies)
+  const [currentUser, setCurrentUser] = useState(() => getPortalSession(window.location.pathname));
 
   // Sync to storage whenever currentUser changes
   useEffect(() => {
     if (currentUser) {
-      try {
-        localStorage.setItem('portal_user', JSON.stringify(currentUser));
-        sessionStorage.setItem('portal_user', JSON.stringify(currentUser));
-      } catch (e) {
-        console.error('Error writing portal_user to storage:', e);
-      }
+      savePortalSession(currentUser);
     }
   }, [currentUser]);
 
-  // Read directly from state or storage to prevent race condition bounce-backs on login
+  // Read directly from state or multi-tier storage
   const getActiveUser = () => {
     if (currentUser && (currentUser.role === 'admin' || currentUser.role === 'student')) {
       return currentUser;
     }
-    try {
-      const saved = localStorage.getItem('portal_user') || sessionStorage.getItem('portal_user');
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (parsed && (parsed.role === 'admin' || parsed.role === 'student')) {
-          return parsed;
-        }
-      }
-    } catch (e) {}
-    return null;
+    return getPortalSession(location.pathname);
   };
 
   const activeUser = getActiveUser();
@@ -62,34 +36,27 @@ function AppContent() {
     if (data.role === 'admin') {
       userObj = {
         role: 'admin',
-        username: data.user.username,
+        username: data.user?.username || 'admin',
         name: 'System Administrator',
-        id: data.user.id
+        id: data.user?.id || 1,
+        email: data.user?.email || 'admin@ati.com'
       };
     } else {
       userObj = {
         role: 'student',
         ...data.profile,
-        username: data.profile.username,
-        name: data.profile.full_name
+        username: data.profile?.username,
+        name: data.profile?.full_name
       };
     }
-    // Synchronously persist immediately to prevent race conditions on instant refresh
-    try {
-      localStorage.setItem('portal_user', JSON.stringify(userObj));
-      sessionStorage.setItem('portal_user', JSON.stringify(userObj));
-    } catch (e) {
-      console.error('Error saving user on login:', e);
-    }
+    // Synchronously persist across localStorage, sessionStorage, and cookies
+    savePortalSession(userObj);
     setCurrentUser(userObj);
   };
 
   const handleLogout = () => {
+    clearPortalSession();
     setCurrentUser(null);
-    try {
-      localStorage.removeItem('portal_user');
-      sessionStorage.removeItem('portal_user');
-    } catch (e) {}
     navigate('/login');
   };
 
@@ -181,10 +148,7 @@ function AppContent() {
                   student={activeUser}
                   onRefreshProfile={(updated) => {
                     const newObj = { ...activeUser, ...updated };
-                    try {
-                      localStorage.setItem('portal_user', JSON.stringify(newObj));
-                      sessionStorage.setItem('portal_user', JSON.stringify(newObj));
-                    } catch (e) {}
+                    savePortalSession(newObj);
                     setCurrentUser(newObj);
                   }}
                 />
@@ -201,10 +165,7 @@ function AppContent() {
                   student={activeUser}
                   onRefreshProfile={(updated) => {
                     const newObj = { ...activeUser, ...updated };
-                    try {
-                      localStorage.setItem('portal_user', JSON.stringify(newObj));
-                      sessionStorage.setItem('portal_user', JSON.stringify(newObj));
-                    } catch (e) {}
+                    savePortalSession(newObj);
                     setCurrentUser(newObj);
                   }}
                 />

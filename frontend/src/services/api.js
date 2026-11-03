@@ -4,7 +4,7 @@ const getBackendUrl = () => {
     return envUrl.replace(/\/+$/, '');
   }
   if (typeof window !== 'undefined' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
-    return 'https://student-portal-backend.onrender.com';
+    return 'https://student-portal-backend-vxa4.onrender.com';
   }
   return 'http://localhost:8000';
 };
