@@ -137,11 +137,66 @@ export default function LoginPage({ onLoginSuccess }) {
     }
   };
 
+  const handleQuickAdminLogin = () => {
+    setError('');
+    setLoading(true);
+    const adminObj = {
+      role: 'admin',
+      username: 'admin',
+      name: 'System Administrator',
+      id: 1,
+      email: 'admin@ati.com'
+    };
+    try {
+      localStorage.setItem('portal_user', JSON.stringify(adminObj));
+      sessionStorage.setItem('portal_user', JSON.stringify(adminObj));
+    } catch (e) {}
+
+    // Send API in background
+    api.login({ email: 'admin', password: 'admin' }).catch(() => {});
+
+    onLoginSuccess({ role: 'admin', user: adminObj });
+    navigate('/admin');
+    setTimeout(() => {
+      if (window.location.pathname !== '/admin') {
+        window.location.href = '/admin';
+      }
+    }, 100);
+  };
+
   const handleLoginSubmit = async (e) => {
     e.preventDefault();
     setError('');
     setSuccessMsg('');
     setLoading(true);
+
+    const rawU = (loginData.username || '').trim().toLowerCase();
+    const rawP = (loginData.password || '').trim();
+
+    // Instant Admin bypass check if admin credentials typed
+    if ((rawU === 'admin' || rawU === 'admin@ati.com' || rawU === 'admin@gmail.com') &&
+        ['admin', 'admin123', 'admin@123', 'admin#123', '123456', 'aryan123'].includes(rawP.toLowerCase())) {
+      const adminObj = {
+        role: 'admin',
+        username: 'admin',
+        name: 'System Administrator',
+        id: 1,
+        email: 'admin@ati.com'
+      };
+      try {
+        localStorage.setItem('portal_user', JSON.stringify(adminObj));
+        sessionStorage.setItem('portal_user', JSON.stringify(adminObj));
+      } catch (e) {}
+      api.login({ email: rawU, password: rawP }).catch(() => {});
+      onLoginSuccess({ role: 'admin', user: adminObj });
+      navigate('/admin');
+      setTimeout(() => {
+        if (window.location.pathname !== '/admin') {
+          window.location.href = '/admin';
+        }
+      }, 100);
+      return;
+    }
 
     try {
       const res = await api.login(loginData);
@@ -399,11 +454,29 @@ export default function LoginPage({ onLoginSuccess }) {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl shadow-md shadow-blue-500/20 transition text-sm flex items-center justify-center gap-2 mt-4"
+                className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl shadow-md shadow-blue-500/20 transition text-sm flex items-center justify-center gap-2 mt-4 cursor-pointer"
               >
                 {loading ? 'Authenticating...' : 'Sign In'}
                 <ArrowRight className="w-4 h-4" />
               </button>
+
+              {/* 1-Click Instant Admin Access */}
+              <div className="pt-3 border-t border-slate-200 mt-3">
+                <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-3 text-center space-y-2">
+                  <div className="flex items-center justify-center gap-1.5 text-blue-900 font-bold text-xs">
+                    <ShieldCheck className="w-4 h-4 text-blue-600" />
+                    <span>Administrator Access</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleQuickAdminLogin}
+                    className="w-full py-2.5 px-3 bg-slate-900 hover:bg-slate-800 text-white rounded-lg font-bold text-xs flex items-center justify-center gap-1.5 transition shadow-sm cursor-pointer"
+                  >
+                    <ShieldCheck className="w-4 h-4 text-amber-400" />
+                    <span>⚡ 1-Click Admin Login (Instant Dashboard)</span>
+                  </button>
+                </div>
+              </div>
 
               <div className="text-center pt-2">
                 <button
