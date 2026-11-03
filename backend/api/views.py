@@ -1084,27 +1084,48 @@ def get_student_allocated_subjects(request, student_id):
 @parser_classes([MultiPartParser, FormParser, JSONParser])
 def manage_notes(request):
     if request.method == 'POST':
-        # Admin uploads/creates note
+        # Admin uploads/creates note for user/student
+        user_id = request.data.get('user_id') or request.data.get('student_id')
         subject_id = request.data.get('subject_id')
         title = request.data.get('title')
         content = request.data.get('content', '')
         document = request.FILES.get('document') or request.FILES.get('file')
-        subject = get_object_or_404(Subject, id=subject_id)
+
+        target_student = None
+        if user_id and str(user_id).lower() != 'all':
+            target_student = StudentProfile.objects.filter(id=user_id).first()
+
+        subject = None
+        if subject_id:
+            subject = Subject.objects.filter(id=subject_id).first()
+        if not subject:
+            subj_name = target_student.full_name if target_student else 'General / All Students'
+            subject, _ = Subject.objects.get_or_create(
+                name=subj_name,
+                defaults={'category': 'User Notes', 'description': f'Notes for {subj_name}'}
+            )
+
         note = StudyNote.objects.create(
             subject=subject,
             title=title,
             content=content,
             document=document
         )
+
+        if target_student and subject:
+            SubjectAllocation.objects.get_or_create(student=target_student, subject=subject)
+
         return Response(StudyNoteSerializer(note, context={'request': request}).data, status=status.HTTP_201_CREATED)
 
     # GET Notes: Check allocation if student
     student_id = request.query_params.get('student_id')
     if student_id:
         student = get_object_or_404(StudentProfile, id=student_id)
-        # ONLY return notes for subjects allocated to this student!
+        # Return notes allocated to this student OR general/all notes
         allocated_subject_ids = SubjectAllocation.objects.filter(student=student).values_list('subject_id', flat=True)
-        notes = StudyNote.objects.filter(subject_id__in=allocated_subject_ids)
+        general_subj_ids = Subject.objects.filter(name__icontains='General').values_list('id', flat=True)
+        all_ids = set(list(allocated_subject_ids) + list(general_subj_ids))
+        notes = StudyNote.objects.filter(subject_id__in=all_ids)
     else:
         # Admin view: all notes
         notes = StudyNote.objects.all()

@@ -42,7 +42,7 @@ export default function AdminPortal() {
   const [subjects, setSubjects] = useState([]);
   const [newSubject, setNewSubject] = useState({ name: '', category: 'Web Tech', description: '' });
   const [allocData, setAllocData] = useState({ student_id: '', subject_id: '' });
-  const [newNote, setNewNote] = useState({ subject_id: '', title: '', content: '' });
+  const [newNote, setNewNote] = useState({ user_id: '', student_id: '', title: '', content: '' });
   const [noteFile, setNoteFile] = useState(null);
   const [uploadingNote, setUploadingNote] = useState(false);
   const [allNotes, setAllNotes] = useState([]);
@@ -1045,7 +1045,8 @@ We are pleased to welcome ${obj} to ${comp} and wish ${obj} a successful and enr
   const handleCreateNote = async (e) => {
     e.preventDefault();
     const errors = {};
-    if (!newNote.subject_id) errors.subject_id = 'Please select a subject';
+    const targetUserId = newNote.user_id || newNote.student_id;
+    if (!targetUserId) errors.user_id = 'Please select a User / Student';
     if (!newNote.title.trim()) errors.title = 'Note title is required';
     if (Object.keys(errors).length > 0) {
       setNoteErrors(errors);
@@ -1057,19 +1058,21 @@ We are pleased to welcome ${obj} to ${comp} and wish ${obj} a successful and enr
       let payload;
       if (noteFile) {
         payload = new FormData();
-        payload.append('subject_id', newNote.subject_id);
+        payload.append('user_id', targetUserId);
+        payload.append('student_id', targetUserId);
         payload.append('title', newNote.title.trim());
         payload.append('content', newNote.content || '');
         payload.append('document', noteFile);
       } else {
         payload = {
-          subject_id: newNote.subject_id,
+          user_id: targetUserId,
+          student_id: targetUserId,
           title: newNote.title.trim(),
           content: newNote.content || ''
         };
       }
       await api.createNote(payload);
-      setNewNote({ subject_id: '', title: '', content: '' });
+      setNewNote({ user_id: '', student_id: '', title: '', content: '' });
       setNoteFile(null);
       showStatus('✓ Study note and PDF/document published successfully!');
       loadAllNotes();
@@ -4244,26 +4247,32 @@ We are pleased to welcome ${obj} to ${comp} and wish ${obj} a successful and enr
                 <form noValidate onSubmit={handleCreateNote} className="space-y-3 text-xs">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
-                      <label className="block font-semibold text-slate-700 mb-1">Subject *</label>
+                      <label className="block font-semibold text-slate-700 mb-1 flex items-center gap-1.5">
+                        <User className="w-3.5 h-3.5 text-blue-600" />
+                        <span>User / Student *</span>
+                      </label>
                       <select
-                        value={newNote.subject_id}
+                        value={newNote.user_id || ''}
                         onChange={(e) => {
-                          setNewNote({ ...newNote, subject_id: e.target.value });
-                          if (noteErrors.subject_id) setNoteErrors(prev => ({ ...prev, subject_id: '' }));
+                          setNewNote({ ...newNote, user_id: e.target.value, student_id: e.target.value });
+                          if (noteErrors.user_id) setNoteErrors(prev => ({ ...prev, user_id: '' }));
                         }}
                         className={`w-full p-2 border rounded-lg focus:ring-2 font-medium transition ${
-                          noteErrors.subject_id ? 'border-rose-400 bg-rose-50/20 focus:ring-rose-400' : 'border-slate-300 focus:ring-blue-500'
+                          noteErrors.user_id ? 'border-rose-400 bg-rose-50/20 focus:ring-rose-400' : 'border-slate-300 focus:ring-blue-500'
                         }`}
                       >
-                        <option value="">-- Select Subject --</option>
-                        {subjects.map((sub) => (
-                          <option key={sub.id} value={sub.id}>{sub.name}</option>
+                        <option value="">-- Select User / Student --</option>
+                        <option value="all">📢 All Users / Students</option>
+                        {students.map((stu) => (
+                          <option key={stu.id} value={stu.id}>
+                            {stu.full_name} ({stu.technology || stu.email || `ID: ${stu.id}`})
+                          </option>
                         ))}
                       </select>
-                      {noteErrors.subject_id && (
+                      {noteErrors.user_id && (
                         <p className="mt-1 text-xs text-rose-600 font-semibold flex items-center gap-1">
                           <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
-                          <span>{noteErrors.subject_id}</span>
+                          <span>{noteErrors.user_id}</span>
                         </p>
                       )}
                     </div>
@@ -4399,8 +4408,9 @@ We are pleased to welcome ${obj} to ${comp} and wish ${obj} a successful and enr
                       <div key={n.id} className="p-4 bg-slate-50/80 border border-slate-200 rounded-2xl space-y-2 hover:border-blue-200 transition">
                         <div className="flex justify-between items-start gap-2">
                           <div className="space-y-1">
-                            <span className="bg-indigo-100 text-indigo-800 px-2 py-0.5 rounded-full font-semibold text-[10px]">
-                              {n.subject_name}
+                            <span className="bg-blue-100 text-blue-800 px-2.5 py-0.5 rounded-full font-semibold text-[10px] inline-flex items-center gap-1">
+                              <User className="w-3 h-3 text-blue-600" />
+                              <span>{n.student_name || n.subject_name || 'All Users / Students'}</span>
                             </span>
                             <h4 className="font-bold text-slate-900 text-sm">{n.title}</h4>
                           </div>

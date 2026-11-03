@@ -268,6 +268,7 @@ class SubjectSerializer(serializers.ModelSerializer):
 
 class StudyNoteSerializer(serializers.ModelSerializer):
     subject_name = serializers.CharField(source='subject.name', read_only=True)
+    student_name = serializers.SerializerMethodField()
     subject_category = serializers.CharField(source='subject.category', read_only=True)
     document_url = serializers.SerializerMethodField()
     file_name = serializers.SerializerMethodField()
@@ -275,6 +276,11 @@ class StudyNoteSerializer(serializers.ModelSerializer):
     class Meta:
         model = StudyNote
         fields = '__all__'
+
+    def get_student_name(self, obj):
+        if obj.subject and 'General' not in obj.subject.name:
+            return obj.subject.name
+        return 'All Users / Students'
 
     def get_document_url(self, obj):
         if obj.document:
