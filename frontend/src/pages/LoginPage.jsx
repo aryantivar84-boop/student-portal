@@ -137,33 +137,6 @@ export default function LoginPage({ currentUser, onLogout, onLoginSuccess }) {
     }
   };
 
-  const handleQuickAdminLogin = () => {
-    setError('');
-    setLoading(true);
-    const adminObj = {
-      role: 'admin',
-      username: 'admin',
-      name: 'System Administrator',
-      id: 1,
-      email: 'admin@ati.com'
-    };
-    try {
-      localStorage.setItem('portal_user', JSON.stringify(adminObj));
-      sessionStorage.setItem('portal_user', JSON.stringify(adminObj));
-    } catch (e) {}
-
-    // Send API in background
-    api.login({ email: 'admin', password: 'admin' }).catch(() => {});
-
-    onLoginSuccess({ role: 'admin', user: adminObj });
-    navigate('/admin');
-    setTimeout(() => {
-      if (window.location.pathname !== '/admin') {
-        window.location.href = '/admin';
-      }
-    }, 100);
-  };
-
   const handleLoginSubmit = async (e) => {
     e.preventDefault();
     setError('');
@@ -390,36 +363,6 @@ export default function LoginPage({ currentUser, onLogout, onLoginSuccess }) {
 
         <div className="p-6 sm:p-8">
           
-          {/* Active Session Notification if already logged in */}
-          {currentUser && (
-            <div className="mb-5 p-3.5 bg-blue-50/90 border border-blue-200 rounded-2xl flex flex-wrap items-center justify-between gap-2.5 shadow-2xs">
-              <div className="flex items-center gap-2 overflow-hidden">
-                <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse flex-shrink-0"></span>
-                <p className="text-xs text-blue-950 font-medium truncate">
-                  Active session: <strong className="font-bold text-blue-900">{currentUser.name || currentUser.username}</strong> ({currentUser.role === 'admin' ? 'Administrator' : 'Student'})
-                </p>
-              </div>
-              <div className="flex items-center gap-1.5 flex-shrink-0 ml-auto">
-                <Link
-                  to={currentUser.role === 'admin' ? '/admin' : '/student'}
-                  className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold transition flex items-center gap-1 shadow-2xs"
-                >
-                  <span>Open {currentUser.role === 'admin' ? 'Admin' : 'Student'} Dashboard</span>
-                  <ArrowRight className="w-3.5 h-3.5" />
-                </Link>
-                {onLogout && (
-                  <button
-                    type="button"
-                    onClick={onLogout}
-                    className="px-2.5 py-1.5 bg-white hover:bg-rose-50 text-rose-600 border border-rose-200 rounded-lg text-xs font-bold transition cursor-pointer"
-                  >
-                    Logout
-                  </button>
-                )}
-              </div>
-            </div>
-          )}
-
           {/* Notification Banners */}
           {error && (
             <div className="mb-5 bg-rose-50 border border-rose-200 text-rose-700 px-4 py-3 rounded-xl text-xs font-semibold flex items-start gap-2.5">
@@ -489,24 +432,6 @@ export default function LoginPage({ currentUser, onLogout, onLoginSuccess }) {
                 {loading ? 'Authenticating...' : 'Sign In'}
                 <ArrowRight className="w-4 h-4" />
               </button>
-
-              {/* 1-Click Instant Admin Access */}
-              <div className="pt-3 border-t border-slate-200 mt-3">
-                <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-3 text-center space-y-2">
-                  <div className="flex items-center justify-center gap-1.5 text-blue-900 font-bold text-xs">
-                    <ShieldCheck className="w-4 h-4 text-blue-600" />
-                    <span>Administrator Access</span>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={handleQuickAdminLogin}
-                    className="w-full py-2.5 px-3 bg-slate-900 hover:bg-slate-800 text-white rounded-lg font-bold text-xs flex items-center justify-center gap-1.5 transition shadow-sm cursor-pointer"
-                  >
-                    <ShieldCheck className="w-4 h-4 text-amber-400" />
-                    <span>⚡ 1-Click Admin Login (Instant Dashboard)</span>
-                  </button>
-                </div>
-              </div>
 
               <div className="text-center pt-2">
                 <button
