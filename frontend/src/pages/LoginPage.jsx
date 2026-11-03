@@ -171,8 +171,18 @@ export default function LoginPage({ onLoginSuccess }) {
         onLoginSuccess(res.data);
         if (res.data.role === 'admin') {
           navigate('/admin');
+          setTimeout(() => {
+            if (window.location.pathname !== '/admin') {
+              window.location.href = '/admin';
+            }
+          }, 150);
         } else {
           navigate('/student');
+          setTimeout(() => {
+            if (window.location.pathname !== '/student') {
+              window.location.href = '/student';
+            }
+          }, 150);
         }
       } else {
         if (res.data.is_pending) {
